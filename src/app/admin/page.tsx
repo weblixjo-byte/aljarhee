@@ -138,69 +138,11 @@ function parseCSVLine(line: string, separator: string): string[] {
 }
 
 export default function AdminPage() {
-  // ─── Password Gate ───────────────────────────────────────────────────────
+  // ─── ALL HOOKS MUST BE AT THE TOP — React Rules of Hooks ───
   const ADMIN_PASS = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "aljarhee2025";
   const [isAuthed, setIsAuthed] = useState(false);
   const [passInput, setPassInput] = useState("");
   const [passError, setPassError] = useState(false);
-
-  useEffect(() => {
-    const ok = sessionStorage.getItem("admin_authed");
-    if (ok === "1") setIsAuthed(true);
-  }, []);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passInput === ADMIN_PASS) {
-      sessionStorage.setItem("admin_authed", "1");
-      setIsAuthed(true);
-      setPassError(false);
-    } else {
-      setPassError(true);
-      setPassInput("");
-    }
-  };
-
-  if (!isAuthed) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4" dir="rtl">
-        <div className="bg-white border border-slate-200 rounded-3xl shadow-lg p-10 w-full max-w-sm flex flex-col gap-6 text-right">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-14 h-14 bg-brand-green/10 rounded-2xl flex items-center justify-center">
-              <Database size={26} className="text-brand-green" />
-            </div>
-            <h1 className="text-base font-black text-slate-900">لوحة إدارة الجارحي</h1>
-            <p className="text-xs font-bold text-slate-400 text-center">أدخل كلمة المرور للوصول إلى لوحة التحكم</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="flex flex-col gap-4">
-            <input
-              type="password"
-              value={passInput}
-              onChange={e => { setPassInput(e.target.value); setPassError(false); }}
-              placeholder="كلمة المرور"
-              autoFocus
-              className={`w-full border ${
-                passError ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50"
-              } focus:border-brand-green outline-none rounded-xl py-3 px-4 text-sm font-bold text-slate-800 text-right font-sans transition-colors`}
-            />
-            {passError && (
-              <p className="text-xs font-black text-red-500 flex items-center gap-1">
-                <AlertCircle size={12} /> كلمة المرور غير صحيحة
-              </p>
-            )}
-            <button
-              type="submit"
-              className="w-full bg-[#2d7a1f] hover:bg-[#246118] text-white font-black text-sm py-3 rounded-xl transition-all shadow-md shadow-[#2d7a1f]/20 border-0 cursor-pointer"
-            >
-              دخول
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-  // ─────────────────────────────────────────────────────────────────────────
 
   const { products, importProducts, resetProducts } = useProducts();
   const { showToast } = useToast();
@@ -213,14 +155,7 @@ export default function AdminPage() {
     withDiscount: 0,
   });
 
-  // New states for product management
-  const [activeTab, setActiveTab] = useState<"import" | "manage" | "careers">(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("admin_active_tab");
-      if (saved === "manage" || saved === "import" || saved === "careers") return saved as any;
-    }
-    return "import";
-  });
+  const [activeTab, setActiveTab] = useState<"import" | "manage" | "careers">("import");
 
   const switchTab = (tab: "import" | "manage" | "careers") => {
     setActiveTab(tab);
@@ -238,6 +173,35 @@ export default function AdminPage() {
   const [newJobReqs, setNewJobReqs] = useState("");
   const [newJobImage, setNewJobImage] = useState("");
   const [isUploadingJobImage, setIsUploadingJobImage] = useState(false);
+  const [manageSearch, setManageSearch] = useState("");
+  const [manageCategory, setManageCategory] = useState("all");
+  const [manageBrand, setManageBrand] = useState("all");
+  const [manageStatus, setManageStatus] = useState("all");
+  const [managePage, setManagePage] = useState(1);
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+
+  // ─ Auth gate effect
+  useEffect(() => {
+    const ok = sessionStorage.getItem("admin_authed");
+    if (ok === "1") setIsAuthed(true);
+    // Restore saved tab
+    const saved = localStorage.getItem("admin_active_tab");
+    if (saved === "manage" || saved === "import" || saved === "careers") {
+      setActiveTab(saved as any);
+    }
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passInput === ADMIN_PASS) {
+      sessionStorage.setItem("admin_authed", "1");
+      setIsAuthed(true);
+      setPassError(false);
+    } else {
+      setPassError(true);
+      setPassInput("");
+    }
+  };
 
   // Load careers list
   const loadCareers = async () => {
@@ -359,12 +323,6 @@ export default function AdminPage() {
       showToast(`فشل الحذف: ${err.message || err}`, "error");
     }
   };
-  const [manageSearch, setManageSearch] = useState("");
-  const [manageCategory, setManageCategory] = useState("all");
-  const [manageBrand, setManageBrand] = useState("all");
-  const [manageStatus, setManageStatus] = useState("all");
-  const [managePage, setManagePage] = useState(1);
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
 
   // Handle drag events
   const handleDrag = (e: React.DragEvent) => {
@@ -948,6 +906,46 @@ export default function AdminPage() {
 
   const totalManagePages = Math.ceil(filteredManageProducts.length / ITEMS_PER_PAGE) || 1;
   const paginatedProducts = filteredManageProducts.slice((managePage - 1) * ITEMS_PER_PAGE, managePage * ITEMS_PER_PAGE);
+
+  if (!isAuthed) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 font-sans" dir="rtl">
+        <div className="bg-white border border-slate-200 rounded-3xl shadow-lg p-10 w-full max-w-sm flex flex-col gap-6 text-right">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-14 h-14 bg-[#2d7a1f]/10 rounded-2xl flex items-center justify-center">
+              <Database size={26} className="text-[#2d7a1f]" />
+            </div>
+            <h1 className="text-base font-black text-slate-900">لوحة إدارة الجارحي</h1>
+            <p className="text-xs font-bold text-slate-400 text-center">أدخل كلمة المرور للوصول إلى لوحة التحكم</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <input
+              type="password"
+              value={passInput}
+              onChange={e => { setPassInput(e.target.value); setPassError(false); }}
+              placeholder="كلمة المرور"
+              autoFocus
+              className={`w-full border ${
+                passError ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50"
+              } focus:border-[#2d7a1f] outline-none rounded-xl py-3 px-4 text-sm font-bold text-slate-800 text-right font-sans transition-colors`}
+            />
+            {passError && (
+              <p className="text-xs font-black text-red-500 flex items-center gap-1">
+                <AlertCircle size={12} /> كلمة المرور غير صحيحة
+              </p>
+            )}
+            <button
+              type="submit"
+              className="w-full bg-[#2d7a1f] hover:bg-[#246118] text-white font-black text-sm py-3 rounded-xl transition-all shadow-md shadow-[#2d7a1f]/20 border-0 cursor-pointer"
+            >
+              دخول
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
