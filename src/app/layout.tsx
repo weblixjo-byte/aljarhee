@@ -143,7 +143,7 @@ export default function RootLayout({
           .whatsapp-float {
             position: fixed;
             bottom: 28px;
-            right: 24px;
+            left: 24px;
             z-index: 9999;
             display: flex;
             align-items: center;
@@ -185,9 +185,9 @@ export default function RootLayout({
           /* Tooltip */
           .whatsapp-tooltip {
             position: absolute;
-            right: 74px;
+            left: 74px;
             top: 50%;
-            transform: translateY(-50%) translateX(8px);
+            transform: translateY(-50%) translateX(-8px);
             background: #111827;
             color: #fff;
             font-size: 0.72rem;
@@ -206,11 +206,11 @@ export default function RootLayout({
             content: '';
             position: absolute;
             top: 50%;
-            right: -6px;
+            left: -6px;
             transform: translateY(-50%);
             border: 6px solid transparent;
-            border-left-color: #111827;
-            border-right: 0;
+            border-right-color: #111827;
+            border-left: 0;
           }
           .whatsapp-float:hover .whatsapp-tooltip {
             opacity: 1;
@@ -222,7 +222,7 @@ export default function RootLayout({
               width: 56px;
               height: 56px;
               bottom: 20px;
-              right: 16px;
+              left: 16px;
             }
             .whatsapp-icon {
               width: 56px;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import { useProducts } from "../../context/ProductContext";
@@ -23,8 +23,13 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  Star
+  Star,
+  Briefcase,
+  MapPin,
+  Calendar,
+  Loader2
 } from "lucide-react";
+import { supabase } from "../../lib/supabaseClient";
 
 interface ImportedRow {
   "onsale"?: string | number;
@@ -145,18 +150,149 @@ export default function AdminPage() {
   });
 
   // New states for product management
-  const [activeTab, setActiveTab] = useState<"import" | "manage">(() => {
+  const [activeTab, setActiveTab] = useState<"import" | "manage" | "careers">(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("admin_active_tab");
-      if (saved === "manage" || saved === "import") return saved;
+      if (saved === "manage" || saved === "import" || saved === "careers") return saved as any;
     }
     return "import";
   });
 
-  const switchTab = (tab: "import" | "manage") => {
+  const switchTab = (tab: "import" | "manage" | "careers") => {
     setActiveTab(tab);
     if (typeof window !== "undefined") {
       localStorage.setItem("admin_active_tab", tab);
+    }
+  };
+
+  // Careers / Jobs Management States
+  const [careersList, setCareersList] = useState<any[]>([]);
+  const [careersLoading, setCareersLoading] = useState(false);
+  const [newJobTitle, setNewJobTitle] = useState("");
+  const [newJobLocation, setNewJobLocation] = useState("عمان، البيادر");
+  const [newJobDesc, setNewJobDesc] = useState("");
+  const [newJobReqs, setNewJobReqs] = useState("");
+  const [newJobImage, setNewJobImage] = useState("");
+  const [isUploadingJobImage, setIsUploadingJobImage] = useState(false);
+
+  // Load careers list
+  const loadCareers = async () => {
+    try {
+      setCareersLoading(true);
+      if (!supabase) return;
+      const { data, error } = await supabase
+        .from("careers")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setCareersList(data || []);
+    } catch (err) {
+      console.error("Failed to load careers:", err);
+      showToast("حدث خطأ أثناء تحميل الوظائف.", "error");
+    } finally {
+      setCareersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "careers") {
+      loadCareers();
+    }
+  }, [activeTab]);
+
+  // Handle uploading careers banner/announcement image
+  const handleJobImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingJobImage(true);
+      if (!supabase) throw new Error("Supabase is not initialized");
+
+      const fileExt = file.name.split(".").pop();
+      const fileName = `careers/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(fileName);
+
+      if (data?.publicUrl) {
+        setNewJobImage(data.publicUrl);
+        showToast("تم رفع صورة الإعلان بنجاح!", "success");
+      }
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      showToast(`فشل رفع الصورة: ${err.message || err}`, "error");
+    } finally {
+      setIsUploadingJobImage(false);
+    }
+  };
+
+  // Add new jobvacancy
+  const handleAddJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newJobTitle.trim() || !newJobDesc.trim()) {
+      showToast("يرجى إدخال المسمى الوظيفي والوصف الأساسي.", "error");
+      return;
+    }
+
+    try {
+      if (!supabase) throw new Error("Supabase is not initialized");
+
+      const newJob = {
+        title: newJobTitle.trim(),
+        location: newJobLocation.trim(),
+        description: newJobDesc.trim(),
+        requirements: newJobReqs.trim() || null,
+        image: newJobImage.trim() || null,
+      };
+
+      const { error } = await supabase
+        .from("careers")
+        .insert([newJob]);
+
+      if (error) throw error;
+
+      showToast("تم نشر إعلان الوظيفة بنجاح!", "success");
+      setNewJobTitle("");
+      setNewJobDesc("");
+      setNewJobReqs("");
+      setNewJobImage("");
+      loadCareers();
+    } catch (err: any) {
+      console.error("Save error:", err);
+      showToast(`فشل الحفظ: ${err.message || err}`, "error");
+    }
+  };
+
+  // Delete vacancy
+  const handleDeleteJob = async (id: number) => {
+    if (!confirm("هل أنت متأكد من حذف إعلان الوظيفة هذا نهائياً؟")) return;
+
+    try {
+      if (!supabase) throw new Error("Supabase is not initialized");
+
+      const { error } = await supabase
+        .from("careers")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      showToast("تم حذف إعلان الوظيفة بنجاح.", "success");
+      loadCareers();
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      showToast(`فشل الحذف: ${err.message || err}`, "error");
     }
   };
   const [manageSearch, setManageSearch] = useState("");

@@ -80,7 +80,7 @@ export default function CartPage() {
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
   
   // Free shipping above 20 JD
-  const shippingFee = subtotal >= 20 ? 0 : 3;
+  const shippingFee = subtotal >= 20 ? 0 : 5;
   const total = subtotal + shippingFee;
 
   // Handle WhatsApp checkout submission
@@ -102,8 +102,19 @@ export default function CartPage() {
       message += `*معلومات المشتري:*\n`;
       message += `• الاسم: ${customerName.trim()}\n`;
       message += `• الهاتف: ${customerPhone.trim()}\n`;
-      message += `• المدينة: ${customerCity === "Amman" ? "عمان" : customerCity === "Zarqa" ? "الزرقاء" : customerCity === "Irbid" ? "إربد" : customerCity === "Salt" ? "السلط" : "باقي المحافظات"}\n`;
-      message += `• العنوان بالتفصيل: ${customerAddress.trim()}\n\n`;
+      message += `• المدينة: ${
+        customerCity === "Amman"
+          ? "عمان"
+          : customerCity === "Zarqa"
+          ? "الزرقاء"
+          : customerCity === "Irbid"
+          ? "إربد"
+          : customerCity === "Salt"
+          ? "السلط"
+          : "باقي المحافظات"
+      }\n`;
+      message += `• العنوان بالتفصيل: ${customerAddress.trim()}\n`;
+      message += `• طريقة الدفع: الدفع عند الاستلام (كاش)\n\n`;
 
       message += `*القطع المطلوبة:*\n`;
       cartItems.forEach((item, index) => {
@@ -119,7 +130,7 @@ export default function CartPage() {
       message += `• المجموع الفرعي: ${subtotal} د.أ\n`;
       message += `• تكلفة التوصيل: ${shippingFee === 0 ? "مجاني" : `${shippingFee} د.أ`}\n`;
       message += `• *المجموع الإجمالي: ${total} د.أ*\n\n`;
-      message += `يرجى تأكيد الطلب وتجهيز الشحن.`;
+      message += `يرجى تأكيد الطلب وتجهيز الشحن والدفع كاش عند الاستلام.`;
 
       // Encode URL for WhatsApp
       const encodedMsg = encodeURIComponent(message);
@@ -287,11 +298,11 @@ export default function CartPage() {
                     onChange={(e) => setCustomerCity(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none focus:border-brand-green focus:bg-white cursor-pointer text-right appearance-none font-sans"
                   >
-                    <option value="Amman">العاصمة عمان (توصيل 3 د.أ / مجاني فوق 20)</option>
-                    <option value="Zarqa">الزرقاء (توصيل 3 د.أ / مجاني فوق 20)</option>
-                    <option value="Irbid">إربد (توصيل 3 د.أ / مجاني فوق 20)</option>
-                    <option value="Salt">السلط (توصيل 3 د.أ / مجاني فوق 20)</option>
-                    <option value="Others">محافظة أخرى</option>
+                    <option value="Amman">العاصمة عمان (توصيل 5 د.أ / مجاني فوق 20 د.أ)</option>
+                    <option value="Zarqa">الزرقاء (توصيل 5 د.أ / مجاني فوق 20 د.أ)</option>
+                    <option value="Irbid">إربد (توصيل 5 د.أ / مجاني فوق 20 د.أ)</option>
+                    <option value="Salt">السلط (توصيل 5 د.أ / مجاني فوق 20 د.أ)</option>
+                    <option value="Others">محافظة أخرى (توصيل 5 د.أ / مجاني فوق 20 د.أ)</option>
                   </select>
                 </div>
 
@@ -306,6 +317,18 @@ export default function CartPage() {
                     onChange={(e) => setCustomerAddress(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200/80 rounded-xl py-2.5 px-4 text-xs font-bold text-slate-800 outline-none focus:border-brand-green focus:bg-white transition-all text-right font-sans resize-none"
                   />
+                </div>
+
+                {/* Payment Method Option */}
+                <div className="flex flex-col gap-1.5 mt-1">
+                  <span className="text-[0.7rem] font-black text-slate-600">طريقة الدفع المتاحة</span>
+                  <div className="bg-[#2d7a1f]/5 border border-[#2d7a1f]/20 rounded-xl p-3.5 flex items-center justify-between text-[0.7rem] font-black text-slate-800">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-[#2d7a1f] animate-pulse shrink-0" />
+                      <span>الدفع عند الاستلام (كاش عند التوصيل)</span>
+                    </span>
+                    <span className="text-[#2d7a1f] font-black shrink-0">فقط كاش</span>
+                  </div>
                 </div>
 
                 {/* Bill details */}
