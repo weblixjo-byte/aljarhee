@@ -1,21 +1,11 @@
 import { MetadataRoute } from "next";
-import { productsData } from "../data/products";
-import importedProductsStatic from "../data/imported_products.json";
+import { getProductsList } from "../lib/productsApi";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://aljarhi-parts.com";
 
-  // Combine static and imported products
-  const allProducts = [...productsData];
-  const staticImported = importedProductsStatic as any[];
-
-  if (staticImported && staticImported.length > 0) {
-    staticImported.forEach((p) => {
-      if (!allProducts.some((item) => item.id === p.id)) {
-        allProducts.push(p);
-      }
-    });
-  }
+  // Fetch all active products (Supabase + fallbacks)
+  const allProducts = await getProductsList();
 
   // Base static routes
   const routes: MetadataRoute.Sitemap = [

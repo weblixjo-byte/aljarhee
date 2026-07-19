@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { productsData } from "../../../data/products";
-import importedProductsStatic from "../../../data/imported_products.json";
+import { getProductsList } from "../../../lib/productsApi";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -10,18 +9,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const productId = Number(id);
 
-  // Combine static and imported products to find the target item
-  const allProducts = [...productsData];
-  const staticImported = importedProductsStatic as any[];
-
-  if (staticImported && staticImported.length > 0) {
-    staticImported.forEach((p) => {
-      if (!allProducts.some((item) => item.id === p.id)) {
-        allProducts.push(p);
-      }
-    });
-  }
-
+  // Fetch combined list (Supabase + local fallbacks)
+  const allProducts = await getProductsList();
   const product = allProducts.find((p) => p.id === productId);
 
   if (!product) {
