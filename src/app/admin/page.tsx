@@ -1,0 +1,1374 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import * as XLSX from "xlsx";
+import { useProducts } from "../../context/ProductContext";
+import { useToast } from "../../context/ToastContext";
+import { 
+  Upload, 
+  FileText, 
+  Trash2, 
+  CheckCircle, 
+  AlertCircle, 
+  ArrowRight,
+  Database,
+  ArrowDownToLine,
+  Layers,
+  Percent,
+  Check,
+  Edit,
+  Search,
+  X,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Star
+} from "lucide-react";
+
+interface ImportedRow {
+  "onsale"?: string | number;
+  "woocommerce-LoopProduct-link href"?: string;
+  "fade-in src"?: string;
+  "cat-products"?: string;
+  "product-title"?: string;
+  "Price-amount"?: string | number;
+  "Price-currencySymbol"?: string;
+  "Price-amount (2)"?: string | number;
+  "Price-currencySymbol (2)"?: string;
+  "screen-reader-text"?: string;
+  "screen-reader-text (2)"?: string;
+  [key: string]: any;
+}
+
+// Custom RFC-compliant CSV parser that handles quotes, escaping, and line breaks
+function parseCSV(text: string): any[] {
+  const lines: string[] = [];
+  let currentLine = "";
+  let inQuotes = false;
+  
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+    
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        currentLine += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === '\n' || char === '\r') {
+      if (inQuotes) {
+        currentLine += char;
+      } else {
+        if (char === '\r' && nextChar === '\n') {
+          i++;
+        }
+        lines.push(currentLine);
+        currentLine = "";
+      }
+    } else {
+      currentLine += char;
+    }
+  }
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+  
+  if (lines.length === 0) return [];
+  
+  // Auto-detect CSV separator: comma vs semicolon
+  const firstLine = lines[0];
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  const semicolonCount = (firstLine.match(/;/g) || []).length;
+  const separator = semicolonCount > commaCount ? ";" : ",";
+  
+  // Extract headers
+  const headers = parseCSVLine(lines[0], separator);
+  const result: any[] = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const values = parseCSVLine(lines[i], separator);
+    const obj: any = {};
+    headers.forEach((header, index) => {
+      obj[header.trim()] = values[index] !== undefined ? values[index].trim() : "";
+    });
+    result.push(obj);
+  }
+  return result;
+}
+
+function parseCSVLine(line: string, separator: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+    
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === separator) {
+      if (inQuotes) {
+        current += separator;
+      } else {
+        result.push(current);
+        current = "";
+      }
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+export default function AdminPage() {
+  const { products, importProducts, resetProducts } = useProducts();
+  const { showToast } = useToast();
+  const [dragActive, setDragActive] = useState(false);
+  const [parsedData, setParsedData] = useState<any[]>([]);
+  const [fileName, setFileName] = useState<string>("");
+  const [stats, setStats] = useState({
+    total: 0,
+    categories: 0,
+    withDiscount: 0,
+  });
+
+  // New states for product management
+  const [activeTab, setActiveTab] = useState<"import" | "manage">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("admin_active_tab");
+      if (saved === "manage" || saved === "import") return saved;
+    }
+    return "import";
+  });
+
+  const switchTab = (tab: "import" | "manage") => {
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("admin_active_tab", tab);
+    }
+  };
+  const [manageSearch, setManageSearch] = useState("");
+  const [manageCategory, setManageCategory] = useState("all");
+  const [manageBrand, setManageBrand] = useState("all");
+  const [manageStatus, setManageStatus] = useState("all");
+  const [managePage, setManagePage] = useState(1);
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+
+  // Handle drag events
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  // Helper to map dynamic categories based on keywords
+  const mapCategory = (catText: string = ""): string => {
+    const text = catText.toLowerCase();
+    if (text.includes("هايبرد") || text.includes("كهربا") || text.includes("بطاري")) return "hybrid";
+    if (text.includes("ميكانيك") || text.includes("محرك") || text.includes("موتور") || text.includes("بريك") || text.includes("فحمات") || text.includes("فلتر")) return "mechanical";
+    if (text.includes("دوزان") || text.includes("تعليق") || text.includes("مساعد") || text.includes("مقص")) return "suspension";
+    if (text.includes("بودي") || text.includes("هيكل") || text.includes("ضوء") || text.includes("كشاف") || text.includes("صدام") || text.includes("مرايا")) return "body";
+    if (text.includes("كهرباء") || text.includes("تكييف") || text.includes("كمبريسور") || text.includes("حساس") || text.includes("فيش")) return "electrical";
+    return catText.trim() || "accessories";
+  };
+
+  // CAR DATABASES FOR CLASSIFICATION
+  const CAR_BRANDS = [
+    { id: "toyota", nameAr: "تويوتا", nameEn: "Toyota", keywords: ["تويوتا", "toyota"] },
+    { id: "kia", nameAr: "كيا", nameEn: "Kia", keywords: ["كيا", "kia"] },
+    { id: "hyundai", nameAr: "هيونداي", nameEn: "Hyundai", keywords: ["هيونداي", "hyundai"] },
+    { id: "ford", nameAr: "فورد", nameEn: "Ford", keywords: ["فورد", "ford"] },
+    { id: "honda", nameAr: "هوندا", nameEn: "Honda", keywords: ["هوندا", "honda"] },
+    { id: "chevrolet", nameAr: "شفروليه", nameEn: "Chevrolet", keywords: ["شفروليه", "شيفورليه", "chevrolet", "chevy"] },
+    { id: "lexus", nameAr: "لكزس", nameEn: "Lexus", keywords: ["لكزس", "lexus"] },
+    { id: "tesla", nameAr: "تيسلا", nameEn: "Tesla", keywords: ["تيسلا", "تسلا", "tesla"] },
+    { id: "byd", nameAr: "بي واي دي", nameEn: "BYD", keywords: ["بي واي دي", "byd"] },
+    { id: "volkswagen", nameAr: "فولكس فاجن", nameEn: "Volkswagen", keywords: ["فولكس", "فولكسفاجن", "volkswagen", "vw", "جولف", "golf"] },
+    { id: "nissan", nameAr: "نيسان", nameEn: "Nissan", keywords: ["نيسان", "nissan"] },
+    { id: "mitsubishi", nameAr: "ميتسوبيشي", nameEn: "Mitsubishi", keywords: ["ميتسوبيشي", "mitsubishi"] },
+    { id: "mercedes", nameAr: "مرسيدس", nameEn: "Mercedes", keywords: ["مرسيدس", "mercedes", "benz"] },
+    { id: "bmw", nameAr: "بي إم دبليو", nameEn: "BMW", keywords: ["بي ام", "بي إم", "bmw"] }
+  ];
+
+  const CAR_MODELS = [
+    { brand: "toyota", model: "بريوس (Prius)", keywords: ["بريوس", "prius"] },
+    { brand: "toyota", model: "كامري (Camry)", keywords: ["كامري", "camry"] },
+    { brand: "toyota", model: "كورولا (Corolla)", keywords: ["كورولا", "corolla"] },
+    { brand: "toyota", model: "راف فور (RAV4)", keywords: ["راف", "rav"] },
+    { brand: "toyota", model: "سي اتش ار (C-HR)", keywords: ["c-hr", "chr", "سي اتش"] },
+    { brand: "toyota", model: "يارس (Yaris)", keywords: ["يارس", "ياريس", "yaris"] },
+    { brand: "toyota", model: "أفالون (Avalon)", keywords: ["افالون", "avalon"] },
+    
+    { brand: "kia", model: "نيرو (Niro)", keywords: ["نيرو", "niro"] },
+    { brand: "kia", model: "أوبتيما (Optima)", keywords: ["اوبتيما", "optima"] },
+    { brand: "kia", model: "كي 5 (K5)", keywords: ["k5", "كي 5", "كي فايف"] },
+    { brand: "kia", model: "سورينتو (Sorento)", keywords: ["سورينتو", "sorento"] },
+    { brand: "kia", model: "سبورتج (Sportage)", keywords: ["سبورتج", "سبورتيج", "sportage"] },
+    { brand: "kia", model: "سول (Soul)", keywords: ["سول", "soul"] },
+    { brand: "kia", model: "سيراتو (Cerato)", keywords: ["سيراتو", "cerato"] },
+    { brand: "kia", model: "فورتي (Forte)", keywords: ["فورتي", "forte"] },
+    { brand: "kia", model: "إي في 6 (EV6)", keywords: ["ev6", "اي في"] },
+
+    { brand: "hyundai", model: "سوناتا (Sonata)", keywords: ["سوناتا", "sonata"] },
+    { brand: "hyundai", model: "آيونيك (Ioniq)", keywords: ["ايونيك", "ioniq"] },
+    { brand: "hyundai", model: "توسان (Tucson)", keywords: ["توسان", "tucson"] },
+    { brand: "hyundai", model: "كونا (Kona)", keywords: ["كونا", "kona"] },
+    { brand: "hyundai", model: "إلنترا (Elantra)", keywords: ["النترا", "elantra"] },
+    { brand: "hyundai", model: "أفانتي (Avante)", keywords: ["افانتي", "avante"] },
+    { brand: "hyundai", model: "سانتا فيه (Santa Fe)", keywords: ["سانتا", "santa"] },
+
+    { brand: "ford", model: "فيوجن (Fusion)", keywords: ["فيوجن", "fusion"] },
+    { brand: "ford", model: "سي ماكس (C-Max)", keywords: ["سي ماكس", "c-max", "cmax"] },
+    { brand: "ford", model: "إسكيب (Escape)", keywords: ["اسكايب", "escape", "اسكيب"] },
+    { brand: "ford", model: "فوكس (Focus)", keywords: ["فوكس", "focus"] },
+
+    { brand: "honda", model: "سيفيك (Civic)", keywords: ["سيفيك", "civic"] },
+    { brand: "honda", model: "أكورد (Accord)", keywords: ["اكورد", "accord"] },
+    { brand: "honda", model: "سي آر في (CR-V)", keywords: ["cr-v", "crv"] },
+    { brand: "honda", model: "إنسايت (Insight)", keywords: ["انسايت", "insight"] },
+
+    { brand: "chevrolet", model: "فولت (Volt)", keywords: ["فولت", "volt"] },
+    { brand: "chevrolet", model: "بولت (Bolt)", keywords: ["بولت", "bolt"] },
+    { brand: "chevrolet", model: "ماليبو (Malibu)", keywords: ["ماليبو", "malibu"] },
+    { brand: "chevrolet", model: "سبارك (Spark)", keywords: ["سبارك", "spark"] },
+
+    { brand: "lexus", model: "سي تي 200 اتش (CT200h)", keywords: ["ct200h", "ct 200h", "ct"] },
+    { brand: "lexus", model: "إي إس (ES)", keywords: ["es300", "es350", "es 300", "es300h"] },
+    { brand: "lexus", model: "آر إكس (RX)", keywords: ["rx450", "rx350", "rx 450", "rx450h"] },
+
+    { brand: "tesla", model: "موديل 3 (Model 3)", keywords: ["model 3", "موديل 3"] },
+    { brand: "tesla", model: "موديل واي (Model Y)", keywords: ["model y", "موديل واي"] },
+
+    { brand: "byd", model: "سونغ (Song)", keywords: ["song", "سونغ", "سونج"] },
+    { brand: "byd", model: "هان (Han)", keywords: ["han", "هان"] },
+
+    { brand: "volkswagen", model: "آي دي 4 (ID.4)", keywords: ["id4", "id.4"] },
+    { brand: "volkswagen", model: "آي دي 6 (ID.6)", keywords: ["id6", "id.6"] },
+    { brand: "volkswagen", model: "آي دي 3 (ID.3)", keywords: ["id3", "id.3"] },
+    { brand: "volkswagen", model: "إي جولف (e-Golf)", keywords: ["جولف", "golf", "اي جولف"] }
+  ];
+
+  // Helper to detect brand and model from product title
+  const detectCarDetails = (title: string = "") => {
+    const lowerTitle = title.toLowerCase();
+    let brand = "all";
+    let brandText = "جميع الماركات";
+    let model = "جميع الموديلات";
+    let year = "all";
+
+    // 1. Detect Brand
+    for (const b of CAR_BRANDS) {
+      const matches = b.keywords.some(kw => lowerTitle.includes(kw));
+      if (matches) {
+        brand = b.id;
+        brandText = b.nameAr;
+        break;
+      }
+    }
+
+    // 2. Detect Model
+    for (const m of CAR_MODELS) {
+      // Allow cross-detecting brand from model even if brand keyword wasn't explicit
+      const matches = m.keywords.some(kw => lowerTitle.includes(kw));
+      if (matches) {
+        model = m.model;
+        if (brand === "all") {
+          brand = m.brand;
+          const associatedBrand = CAR_BRANDS.find(b => b.id === m.brand);
+          if (associatedBrand) {
+            brandText = associatedBrand.nameAr;
+          }
+        }
+        break;
+      }
+    }
+
+    // 3. Extract Year Range (e.g. 2016-2022 or 2018)
+    const yearRegex = /\b(20\d{2})[-/](20\d{2})\b/;
+    const yearMatch = yearRegex.exec(title);
+    if (yearMatch) {
+      year = `${yearMatch[1]}-${yearMatch[2]}`;
+    } else {
+      const singleYearRegex = /\b(20\d{2})\b/;
+      const singleYearMatch = singleYearRegex.exec(title);
+      if (singleYearMatch) {
+        year = singleYearMatch[1];
+      }
+    }
+
+    // Check used vs new
+    let condition = "new";
+    let conditionText = "جديد";
+    if (lowerTitle.includes("مستعمل") || lowerTitle.includes("فحص") || lowerTitle.includes("نظيف")) {
+      condition = "used";
+      conditionText = "مستعمل نظيف";
+    }
+
+    return { brand, brandText, model, year, condition, conditionText };
+  };
+
+  // Main file processing logic
+  const processFile = (file: File) => {
+    setFileName(file.name);
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        if (!data) return;
+
+        let rows: any[] = [];
+        const isCSV = file.name.toLowerCase().endsWith(".csv");
+
+        if (isCSV) {
+          const encodings = ["utf-8", "windows-1256", "utf-16le", "windows-1252"];
+          let bestText = "";
+          let maxArabicCount = -1;
+
+          for (const encoding of encodings) {
+            try {
+              const decoder = new TextDecoder(encoding);
+              const decodedText = decoder.decode(new Uint8Array(data as ArrayBuffer));
+              
+              // Count Arabic characters in Unicode range
+              const arabicMatch = decodedText.match(/[\u0600-\u06FF]/g);
+              const arabicCount = arabicMatch ? arabicMatch.length : 0;
+              
+              if (arabicCount > maxArabicCount) {
+                maxArabicCount = arabicCount;
+                bestText = decodedText;
+              }
+            } catch (err) {
+              console.warn(`Failed decoding with ${encoding}:`, err);
+            }
+          }
+          
+          console.log(`Auto-selected CSV encoding with ${maxArabicCount} Arabic characters.`);
+          rows = parseCSV(bestText);
+        } else {
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          rows = XLSX.utils.sheet_to_json<any>(worksheet);
+        }
+
+        if (rows.length === 0) {
+          showToast("الملف المرفوع فارغ ولا يحتوي على أي بيانات.", "error");
+          return;
+        }
+
+        // Print diagnostic headers to console for debugging
+        const fileHeaders = Object.keys(rows[0] || {});
+        console.log("Excel Headers detected:", fileHeaders);
+
+        // Helper to extract fields using keywords or exact list
+        const getFieldValue = (row: any, searchKeys: string[], defaultVal: any = "") => {
+          // 1. Try exact matches
+          for (const key of searchKeys) {
+            if (row[key] !== undefined && row[key] !== null) {
+              return row[key];
+            }
+          }
+          // 2. Try case-insensitive, space/hyphen/underscore insensitive keyword matching
+          const normalizedSearchKeys = searchKeys.map(k => k.toLowerCase().replace(/[-_\s()]/g, ""));
+          const rowKeys = Object.keys(row);
+          for (const rKey of rowKeys) {
+            const normalizedRowKey = rKey.toLowerCase().replace(/[-_\s()]/g, "");
+            for (const sKey of normalizedSearchKeys) {
+              if (normalizedRowKey === sKey || normalizedRowKey.includes(sKey)) {
+                return row[rKey];
+              }
+            }
+          }
+          return defaultVal;
+        };
+
+        // Map excel data to site Product format
+        const mappedProducts = rows.map((row, idx) => {
+          const titleRaw = getFieldValue(row, ["product_title", "product-title", "product title", "title", "name", "الاسم", "اسم المنتج"]);
+          let title = String(titleRaw || "").trim();
+
+          // FALLBACK: If title is empty, consists ONLY of question marks, OR contains any question marks "?" (Excel export error)
+          const hasQuestionMarks = title.includes("?");
+          const isOnlyQuestionMarks = title === "" || /^[?\s]+$/.test(title);
+          
+          if (isOnlyQuestionMarks || hasQuestionMarks) {
+            const linkRaw = getFieldValue(row, ["woocommerce-LoopProduct-link href", "woocommerce_LoopProduct_link_href", "link", "href", "url"]);
+            if (linkRaw) {
+              const linkStr = String(linkRaw).trim();
+              try {
+                const match = linkStr.match(/\/product\/([^/?#]+)/);
+                if (match && match[1]) {
+                  const decodedUrlTitle = decodeURIComponent(match[1]).replace(/[-_]/g, " ").trim();
+                  // Only replace if the URL decoded title is valid and doesn't contain question marks
+                  if (decodedUrlTitle && !decodedUrlTitle.includes("?")) {
+                    title = decodedUrlTitle;
+                  }
+                }
+              } catch (e) {
+                console.warn("Failed to extract title from URL:", linkRaw);
+              }
+            }
+          }
+
+          // Default placeholder name if completely missing or still contains question marks
+          if (!title || /^[?\s]+$/.test(title) || title.includes("?")) {
+            title = `قطعة غيار #${idx + 1}`;
+          }
+
+          const imageUrlRaw = getFieldValue(row, ["foto in src", "foto_in_src", "fade-in src", "fade_in_src", "image", "src", "photo", "الصورة", "رابط الصورة"]);
+          const imageUrl = String(imageUrlRaw || "").trim();
+
+          const categoryRaw = getFieldValue(row, ["cat products", "cat_products", "cat-products", "category", "type", "التصنيف", "القسم"]);
+          let categoryText = String(categoryRaw || "").trim();
+
+          // FALLBACK: If category is empty or corrupted with question marks, guess it from the parsed title
+          if (!categoryText || categoryText.includes("?")) {
+            const lowerTitle = title.toLowerCase();
+            if (lowerTitle.includes("بريك") || lowerTitle.includes("فحما")) {
+              categoryText = "بريكات";
+            } else if (lowerTitle.includes("بواجي") || lowerTitle.includes("بوجي")) {
+              categoryText = "بواجي";
+            } else if (lowerTitle.includes("فلتر") || lowerTitle.includes("فلاتر")) {
+              categoryText = "فلاتر";
+            } else if (lowerTitle.includes("ضو") || lowerTitle.includes("كشاف") || lowerTitle.includes("اضو") || lowerTitle.includes("عدس")) {
+              categoryText = "أضوية";
+            } else if (lowerTitle.includes("محرك") || lowerTitle.includes("موتور") || lowerTitle.includes("سلندر") || lowerTitle.includes("قشاط") || lowerTitle.includes("بستن")) {
+              categoryText = "محركات";
+            } else if (lowerTitle.includes("عرض") || lowerTitle.includes("خصم")) {
+              categoryText = "أحدث العروض";
+            } else {
+              categoryText = "جميع القطع";
+            }
+          }
+
+          const onsaleRaw = getFieldValue(row, ["onsale", "discount", "sale", "خصم"], 0);
+          const onsaleVal = parseFloat(String(onsaleRaw)) || 0;
+
+          const origPriceRaw = getFieldValue(row, ["Price amount", "Price-amount", "Price_amount", "price", "original_price", "السعر"], 0);
+          const originalPrice = parseFloat(String(origPriceRaw).replace(/[^\d.]/g, "")) || 0;
+
+          // Discounted Price
+          let priceRaw = row["Price amount (2)"] || row["Price-amount (2)"] || row["Price_amount (2)"] || row["price2"] || row["sale_price"];
+          if (priceRaw === undefined) {
+            const price2Keys = Object.keys(row).filter(k => k.includes("(2)") || k.includes(" 2") || k.includes("_2") || k.endsWith("2"));
+            if (price2Keys.length > 0) {
+              priceRaw = row[price2Keys[0]];
+            }
+          }
+          let price = parseFloat(String(priceRaw || "").replace(/[^\d.]/g, "")) || 0;
+
+          // Fallback calculations
+          if (price <= 0 && originalPrice > 0) {
+            if (onsaleVal < 0) {
+              price = Math.round(originalPrice * (1 + onsaleVal) * 100) / 100;
+            } else if (onsaleVal > 0 && onsaleVal < 1) {
+              price = Math.round(originalPrice * (1 - onsaleVal) * 100) / 100;
+            } else {
+              price = originalPrice;
+            }
+          }
+
+          // If price is still empty, scan row for any other positive numeric field, ignoring metadata/urls
+          if (price <= 0 && originalPrice <= 0) {
+            const numKeys = Object.keys(row);
+            for (const nk of numKeys) {
+              const lowerKey = nk.toLowerCase();
+              const isUrlOrMeta = 
+                lowerKey.includes("link") || 
+                lowerKey.includes("href") || 
+                lowerKey.includes("url") || 
+                lowerKey.includes("src") || 
+                lowerKey.includes("image") || 
+                lowerKey.includes("foto") || 
+                lowerKey.includes("photo") || 
+                lowerKey.includes("onsale") || 
+                lowerKey.includes("discount") || 
+                lowerKey.includes("id");
+
+              if (!isUrlOrMeta) {
+                const numVal = parseFloat(String(row[nk]).replace(/[^\d.]/g, ""));
+                if (numVal > 0) {
+                  price = numVal;
+                  break;
+                }
+              }
+            }
+          }
+
+          const carDetails = detectCarDetails(title);
+          const newArrival = idx % 5 === 0;
+
+          return {
+            id: idx + 1000,
+            name: title,
+            category: mapCategory(categoryText),
+            categoryName: categoryText,
+            brand: carDetails.brand,
+            model: carDetails.model,
+            year: carDetails.year,
+            price: price || 1.0, // Default fallback price
+            originalPrice: originalPrice > price ? originalPrice : undefined,
+            condition: carDetails.condition,
+            conditionText: carDetails.conditionText,
+            image: imageUrl || "/assets/images/placeholder-product.png",
+            description: `قطعة غيار أصلية متوافقة مع سيارات ${carDetails.brandText} ${carDetails.model}، خاضعة لفحص الجودة وكفالة تشغيل حقيقية من مركز الجارحي.`,
+            featured: idx < 8,
+            bestSeller: false,
+            newArrival
+          };
+        });
+
+        // Filter out items that have completely empty names
+        const validProducts = mappedProducts.filter(p => p.name && p.name.trim() !== "");
+
+        if (validProducts.length === 0) {
+          showToast(`لم يتم العثور على منتجات صالحة. الأعمدة المكتشفة بالملف: ${fileHeaders.slice(0, 6).join(", ")}`, "error");
+          return;
+        }
+
+        setParsedData(validProducts);
+        
+        // Calculate statistics
+        const categoriesFound = new Set(validProducts.map(p => p.categoryName)).size;
+        const discountCount = validProducts.filter(p => p.originalPrice).length;
+
+        setStats({
+          total: validProducts.length,
+          categories: categoriesFound,
+          withDiscount: discountCount,
+        });
+
+        showToast(`تم تحليل الملف بنجاح! تم العثور على ${validProducts.length} منتج.`, "success");
+      } catch (err) {
+        console.error(err);
+        showToast("حدث خطأ أثناء قراءة وتحليل ملف الإكسيل. تأكد من توافق البيانات.", "error");
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  // Drop event handler
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  // Input change handler
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    if (e.target.files && e.target.files[0]) {
+      processFile(e.target.files[0]);
+    }
+  };
+
+  // Save parsed items to storage and context
+  const handleSave = () => {
+    if (parsedData.length === 0) return;
+    importProducts(parsedData);
+    showToast("تم تحديث المنتجات بنجاح وحفظها كقاعدة بيانات للموقع!", "success");
+  };
+
+  // Reset products to fallback state
+  const handleReset = () => {
+    if (confirm("هل أنت متأكد من رغبتك في حذف المنتجات المستوردة واستعادة البيانات الافتراضية؟")) {
+      resetProducts();
+      setParsedData([]);
+      setFileName("");
+      setStats({ total: 0, categories: 0, withDiscount: 0 });
+      showToast("تمت استعادة المنتجات الافتراضية بنجاح.", "success");
+    }
+  };
+
+  // Product management action handlers
+  const handleUpdateProduct = (updatedProd: any) => {
+    const brandMap: Record<string, string> = {
+      toyota: "تويوتا",
+      kia: "كيا",
+      hyundai: "هيونداي",
+      ford: "فورد",
+      honda: "هوندا",
+      chevrolet: "شفروليه",
+      lexus: "لكزس",
+      tesla: "تيسلا",
+      byd: "بي واي دي",
+      volkswagen: "فولكس فاجن",
+      nissan: "نيسان",
+      mitsubishi: "ميتسوبيشي",
+      mercedes: "مرسيدس",
+      bmw: "بي إم دبليو",
+      all: "جميع الماركات"
+    };
+    
+    if (updatedProd.brand) {
+      updatedProd.brandText = brandMap[updatedProd.brand.toLowerCase()] || updatedProd.brand;
+    }
+
+    if (updatedProd.originalPrice && Number(updatedProd.originalPrice) <= Number(updatedProd.price)) {
+      updatedProd.originalPrice = undefined;
+    }
+
+    const originalProd = products.find(p => p.id === updatedProd.id);
+    if (updatedProd.newArrival && (!originalProd || !originalProd.newArrival)) {
+      const currentCount = products.filter(p => p.newArrival).length;
+      if (currentCount >= 10) {
+        showToast("خطأ: تم تجاوز الحد الأقصى لآخر العروض (10 منتجات)!", "error");
+        return;
+      }
+    }
+
+    const updatedProducts = products.map(p => p.id === updatedProd.id ? updatedProd : p);
+    importProducts(updatedProducts);
+    
+    fetch("/api/admin/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedProducts),
+    }).catch(err => console.error("Failed to sync edited database on disk:", err));
+
+    showToast("تم تحديث المنتج بنجاح وحفظ التغييرات!", "success");
+    setEditingProduct(null);
+  };
+
+  const handleDeleteProduct = (productId: number) => {
+    if (confirm("هل أنت متأكد من رغبتك في حذف هذا المنتج نهائياً؟")) {
+      const updatedProducts = products.filter(p => p.id !== productId);
+      importProducts(updatedProducts);
+      
+      fetch("/api/admin/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProducts),
+      }).catch(err => console.error("Failed to sync deleted database on disk:", err));
+
+      showToast("تم حذف المنتج بنجاح.", "success");
+    }
+  };
+
+  const handleToggleNewArrival = (productId: number, checked: boolean) => {
+    if (checked) {
+      const currentCount = products.filter(p => p.newArrival).length;
+      if (currentCount >= 10) {
+        showToast("خطأ: لا يمكن اختيار أكثر من 10 منتجات لآخر العروض!", "error");
+        return;
+      }
+    }
+    const updatedProducts = products.map(p => {
+      if (p.id === productId) {
+        return { ...p, newArrival: checked };
+      }
+      return p;
+    });
+    importProducts(updatedProducts);
+
+    fetch("/api/admin/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedProducts),
+    }).catch(err => console.error("Failed to sync new arrival flag on disk:", err));
+
+    showToast(checked ? "تم إضافة المنتج لآخر العروض" : "تم إزالة المنتج من آخر العروض", "success");
+  };
+
+  const handleResetStatus = (field: "newArrival") => {
+    const label = "آخر العروض";
+    if (confirm(`هل أنت متأكد من رغبتك في تصفير وإلغاء جميع المنتجات من تصنيف "${label}"؟`)) {
+      const updatedProducts = products.map(p => ({ ...p, [field]: false }));
+      importProducts(updatedProducts);
+
+      fetch("/api/admin/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProducts),
+      }).catch(err => console.error(`Failed to reset ${field} on disk:`, err));
+
+      showToast(`تم تصفير وإلغاء تصنيف "${label}" بالكامل بنجاح.`, "success");
+    }
+  };
+
+  // Dynamically extract active list of categories and brands in database
+  const activeCategories = Array.from(new Set(products.map(p => p.categoryName || p.category).filter(Boolean)));
+  const activeBrands = Array.from(new Set(products.map(p => p.brand).filter(Boolean)));
+
+  const brandMap: Record<string, string> = {
+    toyota: "تويوتا (Toyota)",
+    kia: "كيا (Kia)",
+    hyundai: "هيونداي (Hyundai)",
+    ford: "فورد (Ford)",
+    honda: "هوندا (Honda)",
+    chevrolet: "شفروليه (Chevrolet)",
+    lexus: "لكزس (Lexus)",
+    tesla: "تيسلا (Tesla)",
+    byd: "بي واي دي (BYD)",
+    volkswagen: "فولكس فاجن (Volkswagen)",
+    nissan: "نيسان (Nissan)",
+    mitsubishi: "ميتسوبيشي (Mitsubishi)",
+    mercedes: "مرسيدس (Mercedes)",
+    bmw: "بي إم دبليو (BMW)",
+    all: "كل الماركات"
+  };
+
+  const ITEMS_PER_PAGE = 15;
+  const filteredManageProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(manageSearch.toLowerCase()) || 
+                          (p.model && p.model.toLowerCase().includes(manageSearch.toLowerCase())) ||
+                          (p.brand && p.brand.toLowerCase().includes(manageSearch.toLowerCase())) ||
+                          p.id.toString().includes(manageSearch);
+    const matchesCategory = manageCategory === "all" || p.category === manageCategory || p.categoryName === manageCategory;
+    const matchesBrand = manageBrand === "all" || p.brand === manageBrand;
+    
+    let matchesStatus = true;
+    if (manageStatus === "newarrivals") matchesStatus = !!p.newArrival;
+    else if (manageStatus === "onsale") matchesStatus = !!(p.originalPrice && p.originalPrice > p.price);
+
+    return matchesSearch && matchesCategory && matchesBrand && matchesStatus;
+  });
+
+  const totalManagePages = Math.ceil(filteredManageProducts.length / ITEMS_PER_PAGE) || 1;
+  const paginatedProducts = filteredManageProducts.slice((managePage - 1) * ITEMS_PER_PAGE, managePage * ITEMS_PER_PAGE);
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      {/* Header Panel */}
+      <header className="bg-white border-b border-slate-200 py-5 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link 
+              href="/"
+              className="flex items-center gap-1.5 text-xs font-black text-slate-500 hover:text-brand-green border border-slate-200 hover:border-brand-green/20 px-3 py-1.5 rounded-lg transition-all"
+            >
+              <ArrowRight size={14} />
+              <span>العودة للموقع</span>
+            </Link>
+            <h1 className="text-lg font-black text-slate-900">لوحة الإدارة والمخازن</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Database size={18} className="text-brand-green" />
+            <span className="text-xs font-black text-slate-700 bg-slate-100 px-3 py-1 rounded-md">
+              قاعدة البيانات النشطة: {products.length} منتج
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* Tabs Navigation */}
+      <div className="bg-white border-b border-slate-200/80 sticky top-[73px] z-20 shadow-xs">
+        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 flex gap-6">
+          <button
+            onClick={() => switchTab("import")}
+            className={`py-4 border-b-2 font-black text-xs transition-all flex items-center gap-2 cursor-pointer bg-transparent outline-none ${
+              activeTab === "import"
+                ? "border-brand-green text-brand-green"
+                : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <Upload size={14} />
+            <span>استيراد المنتجات (CSV / Excel)</span>
+          </button>
+          
+          <button
+            onClick={() => switchTab("manage")}
+            className={`py-4 border-b-2 font-black text-xs transition-all flex items-center gap-2 cursor-pointer bg-transparent outline-none ${
+              activeTab === "manage"
+                ? "border-brand-green text-brand-green"
+                : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <Database size={14} />
+            <span>إدارة وتعديل المنتجات المضافة ({products.length})</span>
+          </button>
+        </div>
+      </div>
+
+      <main className="flex-1 max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full flex flex-col gap-8 animate-fade-in">
+        
+        {activeTab === "import" ? (
+          <>
+            {/* Upload Zone */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div className="lg:col-span-8 flex flex-col gap-6">
+                <div 
+                  onDragEnter={handleDrag}
+                  onDragOver={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-3xl p-10 text-center flex flex-col items-center justify-center gap-4 transition-all bg-white shadow-xs cursor-pointer min-h-[300px] ${
+                    dragActive 
+                      ? "border-brand-green bg-brand-green/5" 
+                      : "border-slate-300 hover:border-brand-green/50"
+                  }`}
+                  onClick={() => document.getElementById("file-upload")?.click()}
+                >
+                  <input
+                    id="file-upload"
+                    type="file"
+                    className="hidden"
+                    accept=".xlsx, .xls, .csv"
+                    onChange={handleChange}
+                  />
+                  
+                  <div className="w-16 h-16 rounded-2xl bg-brand-green/10 text-brand-green flex items-center justify-center mb-2">
+                    <Upload size={32} />
+                  </div>
+                  
+                  <h3 className="text-base font-black text-slate-800">اسحب شيت الإكسيل هنا أو اضغط للاختيار</h3>
+                  <p className="text-slate-400 text-xs font-medium max-w-sm">
+                    يدعم صيغ Excel (.xlsx, .xls) وصيغة CSV المباشرة. يتم تصنيف السيارات والأسعار بذكاء اصطناعي فوري.
+                  </p>
+
+                  {fileName && (
+                    <div className="mt-4 flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-xl text-xs font-black text-slate-700 border border-slate-200">
+                      <FileText size={16} className="text-brand-green" />
+                      <span>الملف النشط: {fileName}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Stats & Actions Sidebar */}
+              <div className="lg:col-span-4 flex flex-col gap-6">
+                <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
+                  <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-3">إحصائيات الملف المرفوع</h3>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <Database size={16} className="text-slate-500" />
+                        <span className="text-xs font-bold text-slate-600">إجمالي المنتجات</span>
+                      </div>
+                      <span className="text-sm font-black text-slate-900 font-en">{stats.total}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <Layers size={16} className="text-slate-500" />
+                        <span className="text-xs font-bold text-slate-600">التصنيفات المكتشفة</span>
+                      </div>
+                      <span className="text-sm font-black text-slate-900 font-en">{stats.categories}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl">
+                      <div className="flex items-center gap-2">
+                        <Percent size={16} className="text-slate-500" />
+                        <span className="text-xs font-bold text-slate-600">منتجات خاضعة لخصم</span>
+                      </div>
+                      <span className="text-sm font-black text-slate-900 font-en">{stats.withDiscount}</span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-3 mt-2">
+                    <button
+                      onClick={handleSave}
+                      disabled={parsedData.length === 0}
+                      className={`w-full py-4 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer border-0 ${
+                        parsedData.length > 0 
+                          ? "bg-[#2d7a1f] hover:bg-[#246118] text-white shadow-md shadow-[#2d7a1f]/20 hover:-translate-y-0.5" 
+                          : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                      }`}
+                    >
+                      <Check size={18} />
+                      <span>اعتماد وحفظ البيانات للموقع</span>
+                    </button>
+
+                    <button
+                      onClick={handleReset}
+                      className="w-full py-4 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Trash2 size={16} />
+                      <span>استعادة المنتجات الافتراضية</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Preview Grid */}
+            {parsedData.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="text-sm font-black text-slate-900">معاينة المنتجات المستوردة قبل الحفظ ({parsedData.length} منتج)</h3>
+                  <span className="text-slate-400 text-xs font-bold">يرجى التأكد من صحة الصور والأسعار أدناه</span>
+                </div>
+
+                <div className="overflow-x-auto max-h-[500px]">
+                  <table className="w-full text-right border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-slate-400 text-xs font-black">
+                        <th className="pb-3 pl-4">الصورة</th>
+                        <th className="pb-3 px-4">اسم المنتج</th>
+                        <th className="pb-3 px-4">التصنيف</th>
+                        <th className="pb-3 px-4">السيارة والموديل</th>
+                        <th className="pb-3 px-4">السعر الأصلي</th>
+                        <th className="pb-3 pr-4">سعر البيع</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {parsedData.map((prod, index) => {
+                        const discount = prod.originalPrice 
+                          ? Math.round(((prod.originalPrice - prod.price) / prod.originalPrice) * 100)
+                          : 0;
+
+                        return (
+                          <tr key={index} className="text-xs text-slate-700 font-medium">
+                            <td className="py-3 pl-4">
+                              <div className="w-12 h-12 rounded-lg bg-slate-50 border border-slate-100 p-1 flex items-center justify-center overflow-hidden">
+                                <img
+                                  src={prod.image}
+                                  alt={prod.name}
+                                  className="w-full h-full object-contain"
+                                  onError={(e) => {
+                                    e.currentTarget.src = "/assets/images/placeholder-product.png";
+                                  }}
+                                />
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 max-w-[300px]">
+                              <span className="font-black text-slate-800 block mb-0.5">{prod.name}</span>
+                              <span className="text-[0.65rem] text-slate-400 font-bold block">{prod.conditionText}</span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-black">
+                                {prod.categoryName || prod.category}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 uppercase font-en text-[0.68rem] font-bold">
+                              {prod.brand} {prod.model} ({prod.year})
+                            </td>
+                            <td className="py-3 px-4 font-en font-black text-slate-400 line-through">
+                              {prod.originalPrice ? `${prod.originalPrice} د.أ` : "-"}
+                            </td>
+                            <td className="py-3 pr-4">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-en font-black text-slate-900">{prod.price} د.أ</span>
+                                {discount > 0 && (
+                                  <span className="bg-red-500 text-white font-en text-[0.6rem] font-black px-1.5 py-0.5 rounded-sm">
+                                    {discount}% خصم
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* Tab 2: Manage Products Catalog */
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
+            <div className="flex flex-col md:flex-row gap-4 items-center justify-between border-b border-slate-100 pb-5">
+              <div className="flex flex-col gap-1 text-right">
+                <h3 className="text-sm font-black text-slate-900">إدارة وتعديل المنتجات المضافة</h3>
+                <p className="text-slate-400 text-xs font-bold">ابحث، عدّل الأسعار، تحكّم بالخصومات، أو حدد منتجات مختارة وآخر العروض للصفحة الرئيسية</p>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                {/* Search Input */}
+                <div className="relative w-full sm:w-64">
+                  <input
+                    type="text"
+                    placeholder="بحث بالاسم أو الكود..."
+                    value={manageSearch}
+                    onChange={(e) => { setManageSearch(e.target.value); setManagePage(1); }}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2.5 pr-10 pl-4 text-xs font-bold text-slate-800 text-right font-sans"
+                  />
+                  <Search size={14} className="absolute top-1/2 right-3.5 -translate-y-1/2 text-slate-400" />
+                </div>
+
+                {/* Category Filter */}
+                <select
+                  value={manageCategory}
+                  onChange={(e) => { setManageCategory(e.target.value); setManagePage(1); }}
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer text-right appearance-none font-sans"
+                >
+                  <option value="all">كل الأقسام</option>
+                  {activeCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+
+                {/* Brand Filter */}
+                <select
+                  value={manageBrand}
+                  onChange={(e) => { setManageBrand(e.target.value); setManagePage(1); }}
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer text-right appearance-none font-sans"
+                >
+                  <option value="all">كل الماركات</option>
+                  {activeBrands.map(b => (
+                    <option key={b} value={b}>{brandMap[b.toLowerCase()] || b.toUpperCase()}</option>
+                  ))}
+                </select>
+
+                {/* Display Status Filter */}
+                <select
+                  value={manageStatus}
+                  onChange={(e) => { setManageStatus(e.target.value); setManagePage(1); }}
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer text-right appearance-none font-sans"
+                >
+                  <option value="all">جميع الحالات</option>
+                  <option value="newarrivals">آخر العروض</option>
+                  <option value="onsale">القطع الخاضعة لخصم</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Reset Actions Bar */}
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-rose-50/50 border border-rose-100/60 rounded-2xl p-4">
+              <span className="text-[0.7rem] font-bold text-rose-800 text-right">
+                إجراءات سريعة لتصفير تصنيفات الصفحة الرئيسية (الأقصى 10 قطع):
+              </span>
+              <div className="flex flex-wrap gap-2.5 justify-end">
+                <button
+                  onClick={() => handleResetStatus("newArrival")}
+                  className="bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 hover:border-rose-300 font-black text-[0.68rem] px-4 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
+                >
+                  تصفير آخر العروض ({products.filter(p => p.newArrival).length}/10)
+                </button>
+              </div>
+            </div>
+
+            {/* Products Table */}
+            {paginatedProducts.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-right border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 text-xs font-black">
+                      <th className="pb-3 pl-4">الصورة</th>
+                      <th className="pb-3 px-4">اسم المنتج</th>
+                      <th className="pb-3 px-4">التصنيف</th>
+                      <th className="pb-3 px-4">الماركة / الموديل</th>
+                      <th className="pb-3 px-4">الأسعار والخصم</th>
+                      <th className="pb-3 px-4 text-center">آخر العروض ({products.filter(p => p.newArrival).length}/10)</th>
+                      <th className="pb-3 pr-4 text-center">خيارات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {paginatedProducts.map((prod) => {
+                      const discount = prod.originalPrice 
+                        ? Math.round(((prod.originalPrice - prod.price) / prod.originalPrice) * 100)
+                        : 0;
+
+                      return (
+                        <tr key={prod.id} className="text-xs text-slate-700 font-medium hover:bg-slate-50/50">
+                          <td className="py-3.5 pl-4">
+                            <div className="w-12 h-12 rounded-lg bg-slate-50 border border-slate-100 p-1 flex items-center justify-center overflow-hidden">
+                              <img
+                                  src={prod.image}
+                                  alt={prod.name}
+                                  className="w-full h-full object-contain"
+                                  onError={(e) => {
+                                    e.currentTarget.src = "/assets/images/placeholder-product.png";
+                                  }}
+                                />
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 max-w-[280px]">
+                            <span className="font-black text-slate-800 block mb-0.5">{prod.name}</span>
+                            <span className="text-[0.65rem] text-slate-400 font-bold block uppercase font-en">كود: #{prod.id}</span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 font-black">
+                              {prod.categoryName || prod.category}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 uppercase font-en text-[0.68rem] font-bold">
+                            {prod.brand} {prod.model} ({prod.year})
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-en font-black text-slate-900">{prod.price} د.أ</span>
+                                {discount > 0 && (
+                                  <span className="bg-red-500 text-white font-en text-[0.6rem] font-black px-1.5 py-0.5 rounded-sm">
+                                    {discount}% خصم
+                                  </span>
+                                )}
+                              </div>
+                              {prod.originalPrice && (
+                                <span className="text-[0.65rem] text-slate-400 line-through font-en font-bold">السعر الأصلي: {prod.originalPrice} - خصم {prod.originalPrice - prod.price} د.أ</span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* New Arrival Checkbox */}
+                          <td className="py-3.5 px-4 text-center">
+                            <input
+                              type="checkbox"
+                              checked={!!prod.newArrival}
+                              onChange={(e) => handleToggleNewArrival(prod.id, e.target.checked)}
+                              className="w-4.5 h-4.5 accent-brand-green cursor-pointer"
+                            />
+                          </td>
+                          {/* Actions */}
+                          <td className="py-3.5 pr-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => setEditingProduct({ ...prod })}
+                                className="p-1.5 rounded-lg border border-slate-200 hover:border-brand-green/30 text-slate-500 hover:text-brand-green transition-all bg-white cursor-pointer"
+                                title="تعديل المنتج"
+                              >
+                                <Edit size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProduct(prod.id)}
+                                className="p-1.5 rounded-lg border border-red-100 hover:border-red-200 text-slate-400 hover:text-red-600 transition-all bg-white cursor-pointer"
+                                title="حذف المنتج"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                لم يتم العثور على منتجات مطابقة لمعايير التصفية.
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalManagePages > 1 && (
+              <div className="flex items-center justify-between border-t border-slate-100 pt-5">
+                <button
+                  onClick={() => setManagePage(p => Math.max(1, p - 1))}
+                  disabled={managePage === 1}
+                  className="flex items-center gap-1 text-xs font-black text-slate-600 disabled:text-slate-300 disabled:cursor-not-allowed bg-slate-100 hover:bg-slate-200/80 px-3 py-1.5 rounded-lg transition-colors border-0 cursor-pointer"
+                >
+                  <ChevronRight size={14} />
+                  <span>السابق</span>
+                </button>
+                
+                <span className="text-xs font-black text-slate-500">
+                  الصفحة <span className="text-slate-800 font-en">{managePage}</span> من <span className="text-slate-800 font-en">{totalManagePages}</span>
+                </span>
+
+                <button
+                  onClick={() => setManagePage(p => Math.min(totalManagePages, p + 1))}
+                  disabled={managePage === totalManagePages}
+                  className="flex items-center gap-1 text-xs font-black text-slate-600 disabled:text-slate-300 disabled:cursor-not-allowed bg-slate-100 hover:bg-slate-200/80 px-3 py-1.5 rounded-lg transition-colors border-0 cursor-pointer"
+                >
+                  <span>التالي</span>
+                  <ChevronLeft size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+      </main>
+
+      {/* Product Edit Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden text-right border border-slate-100">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-100">
+              <button 
+                onClick={() => setEditingProduct(null)}
+                className="text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer p-1 rounded-full hover:bg-slate-200/50 transition-all flex items-center justify-center w-8 h-8"
+              >
+                <X size={18} />
+              </button>
+              <h3 className="text-sm font-black text-slate-950 flex items-center gap-2">
+                <Edit size={16} className="text-brand-green" />
+                <span>تعديل تفاصيل المنتج</span>
+              </h3>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto max-h-[70vh] grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Product Name */}
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <label className="text-xs font-black text-slate-700">اسم المنتج</label>
+                <input
+                  type="text"
+                  value={editingProduct.name}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
+                />
+              </div>
+
+              {/* Category */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-slate-700">التصنيف</label>
+                <input
+                  type="text"
+                  value={editingProduct.categoryName || editingProduct.category}
+                  onChange={(e) => setEditingProduct({ 
+                    ...editingProduct, 
+                    categoryName: e.target.value,
+                    category: e.target.value
+                  })}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
+                  placeholder="مثال: بريكات، بواجي..."
+                />
+              </div>
+
+              {/* Brand Select */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-slate-700">ماركة السيارة</label>
+                <select
+                  value={editingProduct.brand}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, brand: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                >
+                  <option value="toyota">تويوتا (Toyota)</option>
+                  <option value="kia">كيا (Kia)</option>
+                  <option value="hyundai">هيونداي (Hyundai)</option>
+                  <option value="ford">فورد (Ford)</option>
+                  <option value="honda">هوندا (Honda)</option>
+                  <option value="chevrolet">شفروليه (Chevrolet)</option>
+                  <option value="lexus">لكزس (Lexus)</option>
+                  <option value="tesla">تيسلا (Tesla)</option>
+                  <option value="byd">بي واي دي (BYD)</option>
+                  <option value="volkswagen">فولكس فاجن (Volkswagen)</option>
+                  <option value="nissan">نيسان (Nissan)</option>
+                  <option value="mitsubishi">ميتسوبيشي (Mitsubishi)</option>
+                  <option value="mercedes">مرسيدس (Mercedes)</option>
+                  <option value="bmw">بي إم دبليو (BMW)</option>
+                  <option value="all">أخرى / جميع السيارات</option>
+                </select>
+              </div>
+
+              {/* Model */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-slate-700">الموديل</label>
+                <input
+                  type="text"
+                  value={editingProduct.model}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, model: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
+                />
+              </div>
+
+              {/* Year */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-slate-700">سنة الصنع</label>
+                <input
+                  type="text"
+                  value={editingProduct.year}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, year: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
+                  placeholder="مثال: 2012-2018"
+                />
+              </div>
+
+              {/* Sale Price */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-slate-700">سعر البيع (د.أ)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editingProduct.price}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) || 0 })}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
+                />
+              </div>
+
+              {/* Original Price */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-slate-700">السعر الأصلي (د.أ - للخصم)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editingProduct.originalPrice || ""}
+                  onChange={(e) => setEditingProduct({ 
+                    ...editingProduct, 
+                    originalPrice: e.target.value ? parseFloat(e.target.value) : undefined 
+                  })}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
+                  placeholder="اتركه فارغاً لإلغاء الخصم"
+                />
+              </div>
+
+              {/* Condition */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-slate-700">الحالة</label>
+                <select
+                  value={editingProduct.condition}
+                  onChange={(e) => setEditingProduct({ 
+                    ...editingProduct, 
+                    condition: e.target.value,
+                    conditionText: e.target.value === "new" ? "جديد" : "مستعمل نظيف"
+                  })}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                >
+                  <option value="new">جديد (New)</option>
+                  <option value="used">مستعمل نظيف (Used)</option>
+                </select>
+              </div>
+
+              {/* Image URL */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-black text-slate-700">رابط صورة المنتج</label>
+                <input
+                  type="text"
+                  value={editingProduct.image}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, image: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
+                />
+              </div>
+
+              {/* Description */}
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <label className="text-xs font-black text-slate-700">وصف المنتج</label>
+                <textarea
+                  value={editingProduct.description}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                  rows={3}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-start gap-3 px-6 py-4 bg-slate-50 border-t border-slate-100">
+              <button
+                onClick={() => handleUpdateProduct(editingProduct)}
+                className="bg-[#2d7a1f] hover:bg-[#246118] text-white font-black text-xs px-6 py-2.5 rounded-xl transition-all cursor-pointer shadow-md shadow-[#2d7a1f]/10 border-0"
+              >
+                حفظ التغييرات
+              </button>
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-black text-xs px-6 py-2.5 rounded-xl transition-all cursor-pointer"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
