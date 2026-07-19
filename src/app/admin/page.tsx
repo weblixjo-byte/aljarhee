@@ -138,6 +138,70 @@ function parseCSVLine(line: string, separator: string): string[] {
 }
 
 export default function AdminPage() {
+  // ─── Password Gate ───────────────────────────────────────────────────────
+  const ADMIN_PASS = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "aljarhee2025";
+  const [isAuthed, setIsAuthed] = useState(false);
+  const [passInput, setPassInput] = useState("");
+  const [passError, setPassError] = useState(false);
+
+  useEffect(() => {
+    const ok = sessionStorage.getItem("admin_authed");
+    if (ok === "1") setIsAuthed(true);
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passInput === ADMIN_PASS) {
+      sessionStorage.setItem("admin_authed", "1");
+      setIsAuthed(true);
+      setPassError(false);
+    } else {
+      setPassError(true);
+      setPassInput("");
+    }
+  };
+
+  if (!isAuthed) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4" dir="rtl">
+        <div className="bg-white border border-slate-200 rounded-3xl shadow-lg p-10 w-full max-w-sm flex flex-col gap-6 text-right">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-14 h-14 bg-brand-green/10 rounded-2xl flex items-center justify-center">
+              <Database size={26} className="text-brand-green" />
+            </div>
+            <h1 className="text-base font-black text-slate-900">لوحة إدارة الجارحي</h1>
+            <p className="text-xs font-bold text-slate-400 text-center">أدخل كلمة المرور للوصول إلى لوحة التحكم</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <input
+              type="password"
+              value={passInput}
+              onChange={e => { setPassInput(e.target.value); setPassError(false); }}
+              placeholder="كلمة المرور"
+              autoFocus
+              className={`w-full border ${
+                passError ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50"
+              } focus:border-brand-green outline-none rounded-xl py-3 px-4 text-sm font-bold text-slate-800 text-right font-sans transition-colors`}
+            />
+            {passError && (
+              <p className="text-xs font-black text-red-500 flex items-center gap-1">
+                <AlertCircle size={12} /> كلمة المرور غير صحيحة
+              </p>
+            )}
+            <button
+              type="submit"
+              className="w-full bg-[#2d7a1f] hover:bg-[#246118] text-white font-black text-sm py-3 rounded-xl transition-all shadow-md shadow-[#2d7a1f]/20 border-0 cursor-pointer"
+            >
+              دخول
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const { products, importProducts, resetProducts } = useProducts();
   const { showToast } = useToast();
   const [dragActive, setDragActive] = useState(false);
@@ -935,6 +999,18 @@ export default function AdminPage() {
             <Database size={14} />
             <span>إدارة وتعديل المنتجات المضافة ({products.length})</span>
           </button>
+
+          <button
+            onClick={() => switchTab("careers")}
+            className={`py-4 border-b-2 font-black text-xs transition-all flex items-center gap-2 cursor-pointer bg-transparent outline-none ${
+              activeTab === "careers"
+                ? "border-brand-green text-brand-green"
+                : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <Briefcase size={14} />
+            <span>إعلانات الوظائف</span>
+          </button>
         </div>
       </div>
 
@@ -1115,6 +1191,252 @@ export default function AdminPage() {
               </div>
             )}
           </>
+        ) : activeTab === "careers" ? (
+          /* Tab 3: Careers / Jobs Management */
+          <div className="flex flex-col gap-8" dir="rtl">
+
+            {/* ─────────── Add New Job Form ─────────── */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
+              <div className="border-b border-slate-100 pb-4">
+                <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <Plus size={16} className="text-brand-green" />
+                  <span>إنشاء إعلان وظيفي جديد</span>
+                </h2>
+                <p className="text-slate-400 text-xs font-bold mt-1">أدخل تفاصيل الوظيفة وارفع صورة الإعلان ثم اضغط نشر</p>
+              </div>
+
+              <form onSubmit={handleAddJob} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Job Title */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                    <Briefcase size={12} className="text-brand-green" />
+                    المسمى الوظيفي *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newJobTitle}
+                    onChange={e => setNewJobTitle(e.target.value)}
+                    placeholder="مثال: فني صيانة هايبرد"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2.5 px-3 text-xs font-bold text-slate-800 text-right font-sans transition-colors"
+                  />
+                </div>
+
+                {/* Location */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-black text-slate-700 flex items-center gap-1.5">
+                    <MapPin size={12} className="text-red-400" />
+                    موقع العمل *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newJobLocation}
+                    onChange={e => setNewJobLocation(e.target.value)}
+                    placeholder="مثال: عمان، البيادر"
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2.5 px-3 text-xs font-bold text-slate-800 text-right font-sans transition-colors"
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-xs font-black text-slate-700">وصف الوظيفة *</label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={newJobDesc}
+                    onChange={e => setNewJobDesc(e.target.value)}
+                    placeholder="اكتب وصفاً تفصيلياً للوظيفة، المهام، والمسؤوليات..."
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2.5 px-3 text-xs font-bold text-slate-800 text-right font-sans resize-none transition-colors"
+                  />
+                </div>
+
+                {/* Requirements */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-xs font-black text-slate-700">المتطلبات والشروط <span className="text-slate-400 font-medium">(اختياري)</span></label>
+                  <textarea
+                    rows={3}
+                    value={newJobReqs}
+                    onChange={e => setNewJobReqs(e.target.value)}
+                    placeholder="مثال: خبرة 2-3 سنوات، شهادة فنية، معرفة بأنظمة OBD..."
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2.5 px-3 text-xs font-bold text-slate-800 text-right font-sans resize-none transition-colors"
+                  />
+                </div>
+
+                {/* Image Upload */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-xs font-black text-slate-700">صورة الإعلان <span className="text-slate-400 font-medium">(اختياري)</span></label>
+                  <div className="flex items-center gap-3">
+                    <label
+                      htmlFor="job-image-upload"
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed text-xs font-black cursor-pointer transition-all ${
+                        isUploadingJobImage
+                          ? "border-slate-300 text-slate-400 bg-slate-50"
+                          : "border-brand-green/40 text-brand-green bg-brand-green/5 hover:bg-brand-green/10"
+                      }`}
+                    >
+                      {isUploadingJobImage ? (
+                        <><Loader2 size={14} className="animate-spin" /><span>جاري الرفع...</span></>
+                      ) : (
+                        <><ArrowDownToLine size={14} /><span>رفع صورة</span></>
+                      )}
+                      <input
+                        id="job-image-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleJobImageUpload}
+                        disabled={isUploadingJobImage}
+                      />
+                    </label>
+                    {newJobImage && (
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={newJobImage}
+                          alt="معاينة"
+                          className="w-14 h-14 object-cover rounded-xl border border-slate-200 shadow-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setNewJobImage("")}
+                          className="text-red-500 hover:text-red-700 bg-red-50 border border-red-100 rounded-lg p-1.5 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
+                    {!newJobImage && !isUploadingJobImage && (
+                      <span className="text-xs text-slate-400 font-bold">لم يتم اختيار صورة</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Submit */}
+                <div className="md:col-span-2 flex items-center gap-3 pt-2 border-t border-slate-100">
+                  <button
+                    type="submit"
+                    className="bg-[#2d7a1f] hover:bg-[#246118] text-white font-black text-xs px-8 py-3 rounded-xl transition-all shadow-md shadow-[#2d7a1f]/20 hover:-translate-y-0.5 flex items-center gap-2 border-0 cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    <span>نشر الإعلان الوظيفي</span>
+                  </button>
+                  <span className="text-xs text-slate-400 font-bold">سيظهر الإعلان فوراً في صفحة الوظائف بالموقع</span>
+                </div>
+              </form>
+            </div>
+
+            {/* ─────────── Active Jobs List ─────────── */}
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <Layers size={15} className="text-brand-green" />
+                  <span>الإعلانات المنشورة حالياً</span>
+                  {!careersLoading && (
+                    <span className="bg-slate-100 text-slate-500 text-[0.65rem] font-black px-2 py-0.5 rounded-full font-en">
+                      {careersList.length}
+                    </span>
+                  )}
+                </h3>
+                <button
+                  type="button"
+                  onClick={loadCareers}
+                  disabled={careersLoading}
+                  className="flex items-center gap-1.5 text-xs font-black text-slate-500 hover:text-brand-green border border-slate-200 hover:border-brand-green/30 px-3 py-1.5 rounded-lg transition-all bg-white cursor-pointer"
+                >
+                  {careersLoading ? <Loader2 size={12} className="animate-spin" /> : <ArrowDownToLine size={12} />}
+                  <span>تحديث</span>
+                </button>
+              </div>
+
+              {/* Loading */}
+              {careersLoading && (
+                <div className="flex items-center justify-center py-16 gap-3">
+                  <Loader2 className="animate-spin text-brand-green" size={28} />
+                  <span className="text-xs font-black text-slate-400">جاري تحميل الإعلانات...</span>
+                </div>
+              )}
+
+              {/* Empty */}
+              {!careersLoading && careersList.length === 0 && (
+                <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-14 flex flex-col items-center justify-center gap-3 text-center">
+                  <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center">
+                    <Briefcase size={22} className="text-slate-400" />
+                  </div>
+                  <p className="text-xs font-black text-slate-500">لا توجد إعلانات وظيفية منشورة بعد</p>
+                  <p className="text-[0.65rem] text-slate-400 font-bold">استخدم النموذج أعلاه لإضافة أول إعلان</p>
+                </div>
+              )}
+
+              {/* Jobs Grid */}
+              {!careersLoading && careersList.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {careersList.map(job => (
+                    <div
+                      key={job.id}
+                      className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs hover:shadow-md hover:border-slate-300 transition-all flex flex-col group"
+                    >
+                      {/* Image */}
+                      {job.image ? (
+                        <div className="w-full h-40 bg-slate-50 overflow-hidden border-b border-slate-100">
+                          <img
+                            src={job.image}
+                            alt={job.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-24 bg-gradient-to-br from-brand-green/10 to-emerald-50 border-b border-slate-100 flex items-center justify-center">
+                          <Briefcase size={28} className="text-brand-green/40" />
+                        </div>
+                      )}
+
+                      {/* Body */}
+                      <div className="p-4 flex-grow flex flex-col gap-3">
+                        <div className="flex flex-wrap gap-2 text-[0.62rem] font-black">
+                          <span className="flex items-center gap-1 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg text-slate-500">
+                            <MapPin size={10} className="text-red-400" />
+                            {job.location}
+                          </span>
+                          <span className="flex items-center gap-1 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg text-slate-500">
+                            <Calendar size={10} />
+                            {new Date(job.created_at).toLocaleDateString("ar-JO")}
+                          </span>
+                        </div>
+
+                        <h4 className="text-sm font-black text-slate-800 group-hover:text-brand-green transition-colors">
+                          {job.title}
+                        </h4>
+
+                        <p className="text-[0.7rem] text-slate-500 font-bold leading-relaxed line-clamp-3">
+                          {job.description}
+                        </p>
+
+                        {job.requirements && (
+                          <div className="mt-1 bg-slate-50 border border-slate-100 rounded-xl p-3">
+                            <span className="text-[0.65rem] font-black text-slate-600 block mb-1">المتطلبات:</span>
+                            <p className="text-[0.62rem] text-slate-500 font-bold leading-relaxed whitespace-pre-line line-clamp-3">
+                              {job.requirements}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="px-4 pb-4 pt-2 border-t border-slate-100">
+                        <button
+                          onClick={() => handleDeleteJob(job.id)}
+                          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-100 hover:border-red-200 text-red-600 text-xs font-black transition-all cursor-pointer"
+                        >
+                          <Trash2 size={12} />
+                          <span>حذف الإعلان</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           /* Tab 2: Manage Products Catalog */
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
