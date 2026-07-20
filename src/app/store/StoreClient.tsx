@@ -113,7 +113,7 @@ function StoreContent() {
     const catParam = searchParams.get("category");
     const qParam = searchParams.get("q");
 
-    if (brandParam && BRANDS.some(b => b.key === brandParam)) {
+    if (brandParam) {
       setSelectedBrand(brandParam);
     }
     if (modelParam) setSelectedModel(decodeURIComponent(modelParam));
@@ -182,6 +182,51 @@ function StoreContent() {
     }
   };
 
+  // Get active brands dynamically from the database (Strict Matching)
+  const getDynamicBrands = () => {
+    if (products.length === 0) return [];
+
+    // Get unique brand values from products
+    const uniqueBrands = Array.from(
+      new Set(products.map(p => (p.brand || "").trim()))
+    ).filter(b => b !== "");
+
+    // Build list
+    const list: typeof BRANDS = [];
+
+    // First, add any of the 5 main brands if they exist in the products
+    BRANDS.forEach(mainBrand => {
+      const hasProducts = uniqueBrands.some(
+        b => b.toLowerCase() === mainBrand.key.toLowerCase() || b === mainBrand.name
+      );
+      if (hasProducts) {
+        list.push(mainBrand);
+      }
+    });
+
+    // Second, add any other custom brands or typos
+    uniqueBrands.forEach(rawBrand => {
+      const isMain = BRANDS.some(
+        mb => mb.key.toLowerCase() === rawBrand.toLowerCase() || mb.name === rawBrand
+      );
+      if (!isMain) {
+        list.push({
+          key: rawBrand.toLowerCase(),
+          name: rawBrand,
+          logo: (
+            <div className="w-12 h-12 bg-slate-100 text-[#2d7a1f] rounded-2xl flex items-center justify-center font-bold text-base uppercase shrink-0">
+              {rawBrand.slice(0, 2)}
+            </div>
+          )
+        });
+      }
+    });
+
+    return list;
+  };
+
+  const dynamicBrands = getDynamicBrands();
+
   // Extract unique model + year combinations from active products dynamically
   const getDynamicModelYearCombos = () => {
     if (!selectedBrand) return [];
@@ -219,22 +264,22 @@ function StoreContent() {
   const getFilteredProducts = () => {
     return products.filter(product => {
       // 1. Brand match
-      const matchesBrand = !selectedBrand 
+      const matchesBrand = !selectedBrand || selectedBrand === "all"
         ? true 
         : (product.brand && product.brand.toLowerCase() === selectedBrand.toLowerCase());
 
       // 2. Model match
-      const matchesModel = !selectedModel
+      const matchesModel = !selectedModel || selectedModel === "all"
         ? true
         : (product.model && product.model.toLowerCase() === selectedModel.toLowerCase());
 
       // 3. Year match
-      const matchesYear = !selectedYear
+      const matchesYear = !selectedYear || selectedYear === "all"
         ? true
         : (product.year && String(product.year).toLowerCase() === String(selectedYear).toLowerCase());
 
       // 4. Category match
-      const matchesCategory = !selectedCategory
+      const matchesCategory = !selectedCategory || selectedCategory === "all"
         ? true
         : (product.category === selectedCategory);
 
@@ -362,32 +407,46 @@ function StoreContent() {
               أختر نوع سيارتك
             </h2>
             
-            <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 max-w-4xl mx-auto mb-6">
-              {BRANDS.map((brand) => (
-                <button
-                  key={brand.key}
-                  onClick={() => handleBrandSelect(brand.key)}
-                  className="group bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-[#2d7a1f] rounded-2xl p-6 w-[140px] h-[140px] sm:w-[160px] sm:h-[160px] flex flex-col items-center justify-center gap-4 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_8px_30px_rgba(45,122,31,0.08)]"
-                  aria-label={brand.name}
-                >
-                  <div className="text-slate-650 group-hover:text-[#2d7a1f] transition-colors duration-300 flex items-center justify-center h-16 w-full">
-                    {brand.logo}
-                  </div>
-                  <span className="text-xs font-black text-slate-800 group-hover:text-[#2d7a1f] transition-colors">
-                    {brand.name}
-                  </span>
-                </button>
-              ))}
-            </div>
+            {dynamicBrands.length === 0 ? (
+              <div className="text-center py-12 flex flex-col items-center gap-4">
+                <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center text-slate-400">
+                  <ShoppingBag size={24} />
+                </div>
+                <h3 className="text-sm font-black text-slate-800">الموقع لا يحتوي على منتجات حالياً</h3>
+                <p className="text-slate-400 text-xs font-bold max-w-xs leading-relaxed">
+                  يرجى رفع ملف إكسيل للمنتجات من لوحة إدارة الموقع للبدء بعرض قطع الغيار والسيارات للزبائن.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 max-w-4xl mx-auto mb-6">
+                {dynamicBrands.map((brand) => (
+                  <button
+                    key={brand.key}
+                    onClick={() => handleBrandSelect(brand.key)}
+                    className="group bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-[#2d7a1f] rounded-2xl p-6 w-[140px] h-[140px] sm:w-[160px] sm:h-[160px] flex flex-col items-center justify-center gap-4 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_8px_30px_rgba(45,122,31,0.08)]"
+                    aria-label={brand.name}
+                  >
+                    <div className="text-slate-650 group-hover:text-[#2d7a1f] transition-colors duration-300 flex items-center justify-center h-16 w-full">
+                      {brand.logo}
+                    </div>
+                    <span className="text-xs font-black text-slate-800 group-hover:text-[#2d7a1f] transition-colors">
+                      {brand.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
 
-            <div className="mt-8 border-t border-slate-50 pt-6">
-              <button
-                onClick={() => { setSelectedBrand("all"); setSelectedModel("all"); setSelectedYear("all"); setSelectedCategory("all"); }}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-black text-xs px-8 py-3.5 rounded-xl border-0 cursor-pointer transition-colors"
-              >
-                تصفح جميع قطع الغيار المتاحة بالموقع مباشرة
-              </button>
-            </div>
+            {dynamicBrands.length > 0 && (
+              <div className="mt-8 border-t border-slate-50 pt-6">
+                <button
+                  onClick={() => { setSelectedBrand("all"); setSelectedModel("all"); setSelectedYear("all"); setSelectedCategory("all"); }}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-black text-xs px-8 py-3.5 rounded-xl border-0 cursor-pointer transition-colors"
+                >
+                  تصفح جميع قطع الغيار المتاحة بالموقع مباشرة
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -398,12 +457,12 @@ function StoreContent() {
               <div>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">الماركة المختارة</span>
                 <span className="text-xs font-black text-[#2d7a1f]">
-                  {BRANDS.find(b => b.key === selectedBrand)?.name}
+                  {dynamicBrands.find(b => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}
                 </span>
               </div>
               <button
                 onClick={resetAll}
-                className="flex items-center gap-1 text-slate-400 hover:text-[#2d7a1f] font-bold text-xs bg-slate-50 px-3 py-1.5 rounded-xl border-0 cursor-pointer transition-all animate-fade-in"
+                className="flex items-center gap-1 text-slate-400 hover:text-[#2d7a1f] font-bold text-xs bg-slate-50 px-3 py-1.5 rounded-xl border-0 cursor-pointer transition-all"
               >
                 <span>رجوع للماركات</span>
                 <ArrowRight size={13} />
@@ -446,7 +505,7 @@ function StoreContent() {
               <div>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">السيارة المحددة</span>
                 <span className="text-xs font-black text-[#2d7a1f]">
-                  {BRANDS.find(b => b.key === selectedBrand)?.name} · {selectedModel} {selectedYear}
+                  {dynamicBrands.find(b => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()} · {selectedModel} {selectedYear}
                 </span>
               </div>
               <button
@@ -488,7 +547,7 @@ function StoreContent() {
                 <div className="flex items-center flex-wrap gap-2 text-xs font-black text-slate-800">
                   {selectedBrand && selectedBrand !== "all" && (
                     <span className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg">
-                      {BRANDS.find(b => b.key === selectedBrand)?.name}
+                      {dynamicBrands.find(b => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}
                     </span>
                   )}
                   {selectedModel && selectedModel !== "all" && (
@@ -610,17 +669,25 @@ function StoreContent() {
                           {/* Price & Cart button */}
                           <div className="flex items-center justify-between gap-3 pt-3.5 border-t border-slate-50 mt-auto">
                             <div className="flex flex-col">
-                              {hasDiscount && (
-                                <span className="text-[0.68rem] font-bold text-slate-400 line-through">
-                                  {product.originalPrice} د.أ
+                              {product.price > 0 ? (
+                                <>
+                                  {hasDiscount && (
+                                    <span className="text-[0.68rem] font-bold text-slate-400 line-through">
+                                      {product.originalPrice} د.أ
+                                    </span>
+                                  )}
+                                  <span className="font-en text-sm sm:text-base font-black text-slate-900">
+                                    {product.price}{" "}
+                                    <span className="text-xs font-bold text-slate-500">
+                                      د.أ
+                                    </span>
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-xs font-black text-[#2d7a1f]">
+                                  طلب السعر
                                 </span>
                               )}
-                              <span className="font-en text-sm sm:text-base font-black text-slate-900">
-                                {product.price}{" "}
-                                <span className="text-xs font-bold text-slate-500">
-                                  د.أ
-                                </span>
-                              </span>
                             </div>
 
                             <button

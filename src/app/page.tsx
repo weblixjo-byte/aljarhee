@@ -355,16 +355,22 @@ export default function Home() {
 
                             {/* Pricing & Add to Cart */}
                             <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-50 mt-auto">
-                              <div className="flex flex-col">
-                                {hasDiscount && (
-                                  <span className="text-[0.65rem] font-bold text-slate-400 line-through mb-0.5">
-                                    {product.originalPrice} د.أ
+                                {product.price > 0 ? (
+                                  <>
+                                    {hasDiscount && (
+                                      <span className="text-[0.65rem] font-bold text-slate-400 line-through mb-0.5">
+                                        {product.originalPrice} د.أ
+                                      </span>
+                                    )}
+                                    <span className="font-en text-base font-black text-slate-900">
+                                      {product.price} <span className="text-[0.65rem] font-bold text-slate-500 mr-0.5">د.أ</span>
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs font-black text-[#2d7a1f]">
+                                    طلب السعر
                                   </span>
                                 )}
-                                <span className="font-en text-base font-black text-slate-900">
-                                  {product.price} <span className="text-[0.65rem] font-bold text-slate-500 mr-0.5">د.أ</span>
-                                </span>
-                              </div>
 
                               <button
                                 onClick={(e) => handleAddToCart(product, e)}

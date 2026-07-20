@@ -145,7 +145,7 @@ export default function CartDrawer() {
                   </div>
 
                   <span className="font-en text-xs font-black text-[#2d7a1f]">
-                    {item.price * item.quantity} د.أ
+                    {item.price > 0 ? `${item.price * item.quantity} د.أ` : "طلب السعر"}
                   </span>
                 </div>
 

@@ -116,10 +116,12 @@ export default function CartPage() {
       message += `• العنوان بالتفصيل: ${customerAddress.trim()}\n`;
       message += `• طريقة الدفع: الدفع عند الاستلام (كاش)\n\n`;
 
+      const hasZeroPriceItems = cartItems.some(item => !item.price || item.price === 0);
+
       message += `*القطع المطلوبة:*\n`;
       cartItems.forEach((item, index) => {
         message += `${index + 1}. *${item.name}* (الكمية: ${item.quantity})\n`;
-        message += `   السعر: ${item.price} د.أ\n`;
+        message += `   السعر: ${item.price > 0 ? `${item.price} د.أ` : "طلب السعر (اتصل للاستفسار)"}\n`;
         if (item.brand || item.model) {
           message += `   التوافق: ${item.brand || ""} ${item.model || ""}\n`;
         }
@@ -129,7 +131,7 @@ export default function CartPage() {
       message += `*تفاصيل الفاتورة:*\n`;
       message += `• المجموع الفرعي: ${subtotal} د.أ\n`;
       message += `• تكلفة التوصيل: ${shippingFee === 0 ? "مجاني" : `${shippingFee} د.أ`}\n`;
-      message += `• *المجموع الإجمالي: ${total} د.أ*\n\n`;
+      message += `• *المجموع الإجمالي: ${total} د.أ* ${hasZeroPriceItems ? "(+ قيمة القطع غير المسعرة)" : ""}\n\n`;
       message += `يرجى تأكيد الطلب وتجهيز الشحن والدفع كاش عند الاستلام.`;
 
       // Encode URL for WhatsApp
@@ -197,7 +199,9 @@ export default function CartPage() {
                     {/* Unit Price */}
                     <div className="text-right">
                       <span className="text-[0.65rem] text-slate-400 font-bold block mb-0.5">السعر الفردي</span>
-                      <span className="text-xs font-black text-slate-800 font-en">{item.price} د.أ</span>
+                      <span className="text-xs font-black text-slate-800 font-en">
+                        {item.price > 0 ? `${item.price} د.أ` : "طلب السعر"}
+                      </span>
                     </div>
 
                     {/* Quantity controls */}
@@ -220,7 +224,9 @@ export default function CartPage() {
                     {/* Total item price */}
                     <div className="text-right hidden sm:block w-20">
                       <span className="text-[0.65rem] text-slate-400 font-bold block mb-0.5">المجموع</span>
-                      <span className="text-xs font-black text-brand-green font-en">{item.price * item.quantity} د.أ</span>
+                      <span className="text-xs font-black text-brand-green font-en">
+                        {item.price > 0 ? `${item.price * item.quantity} د.أ` : "طلب السعر"}
+                      </span>
                     </div>
 
                     {/* Delete button */}

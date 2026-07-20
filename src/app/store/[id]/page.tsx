@@ -58,7 +58,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const brandName = getBrandName(product.brand);
   const title = `شراء ${product.name} لسيارات ${brandName} ${product.model} (${product.year}) | الجارحي`;
-  const description = `اشتري ${product.name} لسيارات ${brandName} ${product.model} موديل ${product.year} بجودة مضمونة وكفالة تشغيل حقيقية من مركز الجارحي في الأردن. السعر: ${product.price} د.أ. كاش عند التوصيل.`;
+  const priceText = product.price > 0 ? `السعر: ${product.price} د.أ.` : "طلب السعر عند الاستفسار.";
+  const description = `اشتري ${product.name} لسيارات ${brandName} ${product.model} موديل ${product.year} بجودة مضمونة وكفالة تشغيل حقيقية من مركز الجارحي في الأردن. ${priceText} كاش عند التوصيل.`;
 
   return {
     title,

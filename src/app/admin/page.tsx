@@ -680,22 +680,22 @@ export default function AdminPage() {
 
           const mapBrand = (val: string): string => {
             const b = String(val || "").trim().toLowerCase();
-            if (b.includes("تويوتا") || b === "toyota") return "toyota";
-            if (b.includes("لكزس") || b === "lexus") return "lexus";
-            if (b.includes("نيسان") || b === "nissan") return "nissan";
-            if (b.includes("فورد") || b === "ford") return "ford";
-            if (b.includes("لينكولن") || b.includes("لينكون") || b === "lincoln") return "lincoln";
-            return b || "all";
+            if (b === "تويوتا" || b === "toyota") return "toyota";
+            if (b === "لكزس" || b === "lexus") return "lexus";
+            if (b === "نيسان" || b === "nissan") return "nissan";
+            if (b === "فورد" || b === "ford") return "ford";
+            if (b === "لينكولن" || b === "لينكون" || b === "lincoln") return "lincoln";
+            return String(val || "").trim();
           };
 
-          const finalBrand = rawBrand ? mapBrand(rawBrand) : carDetails.brand;
-          const finalModel = rawModel ? String(rawModel).trim() : carDetails.model;
-          const finalYear = rawYear ? String(rawYear).trim() : carDetails.year;
+          const finalBrand = rawBrand ? mapBrand(rawBrand) : "all";
+          const finalModel = rawModel ? String(rawModel).trim() : "all";
+          const finalYear = rawYear ? String(rawYear).trim() : "all";
 
           // Parse final category from "last cat" column
           const lastCatRaw = getFieldValue(row, ["last cat", "last_cat", "last-cat"]);
-          let finalCategory = "";
-          let finalCategoryName = categoryText;
+          let finalCategory = "all";
+          let finalCategoryName = "جميع القطع";
 
           if (lastCatRaw) {
             const lc = String(lastCatRaw).trim().toLowerCase();
@@ -712,8 +712,9 @@ export default function AdminPage() {
               finalCategory = mapCategory(lc);
               finalCategoryName = String(lastCatRaw).trim();
             }
-          } else {
+          } else if (categoryText && categoryText !== "جميع القطع") {
             finalCategory = mapCategory(categoryText);
+            finalCategoryName = categoryText;
           }
 
           return {
@@ -724,12 +725,12 @@ export default function AdminPage() {
             brand: finalBrand,
             model: finalModel,
             year: finalYear,
-            price: price || 1.0, // Default fallback price
+            price: price || 0, // Keep 0 if price is not specified (don't force 1.0 fallback)
             originalPrice: originalPrice > price ? originalPrice : undefined,
             condition: carDetails.condition,
             conditionText: carDetails.conditionText,
             image: imageUrl || "/assets/images/placeholder-product.png",
-            description: `قطعة غيار أصلية متوافقة مع سيارات ${finalBrand === "all" ? "مختلف الأنواع" : finalBrand.toUpperCase()} ${finalModel}، خاضعة لفحص الجودة وكفالة تشغيل حقيقية من مركز الجارحي.`,
+            description: `قطعة غيار أصلية متوافقة مع سيارات ${finalBrand === "all" ? "مختلف الأنواع" : finalBrand.toUpperCase()} ${finalModel === "all" ? "" : finalModel}، خاضعة لفحص الجودة وكفالة تشغيل حقيقية من مركز الجارحي.`,
             featured: idx < 8,
             bestSeller: false,
             newArrival
@@ -794,12 +795,12 @@ export default function AdminPage() {
 
   // Reset products to fallback state
   const handleReset = () => {
-    if (confirm("هل أنت متأكد من رغبتك في حذف المنتجات المستوردة واستعادة البيانات الافتراضية؟")) {
+    if (confirm("هل أنت متأكد من رغبتك في حذف ومسح كافة المنتجات الحالية من الموقع وقاعدة البيانات نهائياً؟")) {
       resetProducts();
       setParsedData([]);
       setFileName("");
       setStats({ total: 0, categories: 0, withDiscount: 0 });
-      showToast("تمت استعادة المنتجات الافتراضية بنجاح.", "success");
+      showToast("تم مسح كافة المنتجات من قاعدة البيانات بنجاح.", "success");
     }
   };
 
@@ -1151,7 +1152,7 @@ export default function AdminPage() {
                       className="w-full py-4 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Trash2 size={16} />
-                      <span>استعادة المنتجات الافتراضية</span>
+                      <span>مسح جميع المنتجات وقاعدة البيانات</span>
                     </button>
                   </div>
                 </div>
