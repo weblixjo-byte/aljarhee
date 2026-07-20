@@ -705,6 +705,7 @@ function StoreContent() {
   );
 }
 
+// Safe build trigger comment to reactivate deployment pipelines
 export default function StoreClient() {
   return (
     <Suspense
