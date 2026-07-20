@@ -559,7 +559,7 @@ export default function AdminPage() {
 
         // Map excel data to site Product format
         const mappedProducts = rows.map((row, idx) => {
-          const titleRaw = getFieldValue(row, ["product_title", "product-title", "product title", "title", "name", "الاسم", "اسم المنتج"]);
+          const titleRaw = getFieldValue(row, ["product name", "product_title", "product-title", "product title", "title", "name", "الاسم", "اسم المنتج"]);
           let title = String(titleRaw || "").trim();
 
           // FALLBACK: If title is empty, consists ONLY of question marks, OR contains any question marks "?" (Excel export error)
@@ -673,20 +673,63 @@ export default function AdminPage() {
           const carDetails = detectCarDetails(title);
           const newArrival = idx % 5 === 0;
 
+          // Direct explicit columns from Excel if they exist, otherwise fall back to detected values
+          const rawBrand = getFieldValue(row, ["brand", "الشركة", "الماركة"]);
+          const rawModel = getFieldValue(row, ["model", "الموديل", "الفئة"]);
+          const rawYear = getFieldValue(row, ["year", "السنة", "سنة الصنع"]);
+
+          const mapBrand = (val: string): string => {
+            const b = String(val || "").trim().toLowerCase();
+            if (b.includes("تويوتا") || b === "toyota") return "toyota";
+            if (b.includes("لكزس") || b === "lexus") return "lexus";
+            if (b.includes("نيسان") || b === "nissan") return "nissan";
+            if (b.includes("فورد") || b === "ford") return "ford";
+            if (b.includes("لينكولن") || b.includes("لينكون") || b === "lincoln") return "lincoln";
+            return b || "all";
+          };
+
+          const finalBrand = rawBrand ? mapBrand(rawBrand) : carDetails.brand;
+          const finalModel = rawModel ? String(rawModel).trim() : carDetails.model;
+          const finalYear = rawYear ? String(rawYear).trim() : carDetails.year;
+
+          // Parse final category from "last cat" column
+          const lastCatRaw = getFieldValue(row, ["last cat", "last_cat", "last-cat"]);
+          let finalCategory = "";
+          let finalCategoryName = categoryText;
+
+          if (lastCatRaw) {
+            const lc = String(lastCatRaw).trim().toLowerCase();
+            if (lc.includes("بودي") || lc.includes("body")) {
+              finalCategory = "body";
+              finalCategoryName = "قطع بودي";
+            } else if (lc.includes("كهرباء") || lc.includes("كهربا") || lc.includes("electrical")) {
+              finalCategory = "electrical";
+              finalCategoryName = "قطع كهرباء";
+            } else if (lc.includes("ميكانيك") || lc.includes("mechanical")) {
+              finalCategory = "mechanical";
+              finalCategoryName = "قطع ميكانيك";
+            } else {
+              finalCategory = mapCategory(lc);
+              finalCategoryName = String(lastCatRaw).trim();
+            }
+          } else {
+            finalCategory = mapCategory(categoryText);
+          }
+
           return {
             id: idx + 1000,
             name: title,
-            category: mapCategory(categoryText),
-            categoryName: categoryText,
-            brand: carDetails.brand,
-            model: carDetails.model,
-            year: carDetails.year,
+            category: finalCategory,
+            categoryName: finalCategoryName,
+            brand: finalBrand,
+            model: finalModel,
+            year: finalYear,
             price: price || 1.0, // Default fallback price
             originalPrice: originalPrice > price ? originalPrice : undefined,
             condition: carDetails.condition,
             conditionText: carDetails.conditionText,
             image: imageUrl || "/assets/images/placeholder-product.png",
-            description: `قطعة غيار أصلية متوافقة مع سيارات ${carDetails.brandText} ${carDetails.model}، خاضعة لفحص الجودة وكفالة تشغيل حقيقية من مركز الجارحي.`,
+            description: `قطعة غيار أصلية متوافقة مع سيارات ${finalBrand === "all" ? "مختلف الأنواع" : finalBrand.toUpperCase()} ${finalModel}، خاضعة لفحص الجودة وكفالة تشغيل حقيقية من مركز الجارحي.`,
             featured: idx < 8,
             bestSeller: false,
             newArrival

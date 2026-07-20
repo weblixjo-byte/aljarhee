@@ -1,5 +1,4 @@
 import { productsData, Product } from "../data/products";
-import importedProductsStatic from "../data/imported_products.json";
 import { supabase } from "./supabaseClient";
 
 export async function getProductsList(): Promise<Product[]> {
@@ -44,16 +43,5 @@ export async function getProductsList(): Promise<Product[]> {
   }
 
   // Local fallback logic
-  const allProducts = [...productsData];
-  const staticImported = importedProductsStatic as Product[];
-
-  if (staticImported && staticImported.length > 0) {
-    staticImported.forEach((p) => {
-      if (!allProducts.some((item) => item.id === p.id)) {
-        allProducts.push(p);
-      }
-    });
-  }
-
-  return allProducts;
+  return [...productsData];
 }
