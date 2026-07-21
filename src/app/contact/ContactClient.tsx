@@ -112,7 +112,7 @@ export default function ContactClient() {
           <h1 className="text-3xl sm:text-4.5xl font-black tracking-tight leading-tight mb-4">
             يسعدنا دائماً تواصلك معنا
           </h1>
-          <p className="text-slate-350 text-sm sm:text-base max-w-3xl leading-relaxed font-medium">
+          <p className="text-slate-300 text-sm sm:text-base max-w-3xl leading-relaxed font-medium">
             هل تبحث عن قطعة غيار محددة؟ أو ترغب بالاستفسار عن أسعار بطاريات الهايبرد وكفالاتها؟ املأ النموذج الفني بالأسفل أو تواصل معنا فوراً عبر القنوات المتاحة.
           </p>
         </div>

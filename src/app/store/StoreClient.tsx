@@ -346,9 +346,9 @@ function StoreContent() {
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
             المتجر
           </h1>
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-350" dir="rtl">
-            <Link href="/" className="hover:text-[#ffc72c] transition-colors text-slate-350 decoration-none">الرئيسية</Link>
-            <span className="text-slate-500">/</span>
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-300" dir="rtl">
+            <Link href="/" className="hover:text-[#ffc72c] transition-colors text-slate-300 decoration-none">الرئيسية</Link>
+            <span className="text-slate-400">/</span>
             <span className="text-white">المتجر</span>
           </div>
         </div>
@@ -510,7 +510,7 @@ function StoreContent() {
                               const parent = e.currentTarget.parentElement;
                               if (parent) {
                                 const fallback = document.createElement("div");
-                                fallback.className = "flex items-center justify-center w-full h-full text-slate-350 bg-slate-50";
+                                fallback.className = "flex items-center justify-center w-full h-full text-slate-400 bg-slate-50";
                                 fallback.innerHTML = `<svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M13 17H7"/><path d="M13 9H9"/></svg>`;
                                 parent.appendChild(fallback);
                               }

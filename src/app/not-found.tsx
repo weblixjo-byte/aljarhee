@@ -63,7 +63,7 @@ export default function NotFound() {
                   <span className="text-[9px] font-bold text-slate-400">ابحث عن القطع المناسبة لسيارتك</span>
                 </div>
               </div>
-              <ArrowLeft size={14} className="text-slate-500 group-hover:text-slate-350 transition-all translate-x-0 group-hover:-translate-x-1" />
+              <ArrowLeft size={14} className="text-slate-500 group-hover:text-slate-200 transition-all translate-x-0 group-hover:-translate-x-1" />
             </Link>
 
             <Link 
@@ -79,7 +79,7 @@ export default function NotFound() {
                   <span className="text-[9px] font-bold text-slate-400">الصفحة التعريفية وخدمات مركز الجارحي</span>
                 </div>
               </div>
-              <ArrowLeft size={14} className="text-slate-500 group-hover:text-slate-350 transition-all translate-x-0 group-hover:-translate-x-1" />
+              <ArrowLeft size={14} className="text-slate-500 group-hover:text-slate-200 transition-all translate-x-0 group-hover:-translate-x-1" />
             </Link>
           </div>
         </div>
