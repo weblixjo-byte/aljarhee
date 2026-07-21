@@ -39,14 +39,6 @@ export default function ContactClient() {
       actionHref: "tel:0789089842"
     },
     {
-      icon: <MessageCircle className="w-6 h-6 text-[#2d7a1f]" />,
-      title: "فرع القويسمة",
-      details: "0788088097",
-      subtext: "عمان - القويسمة الصناعية - شارع الحارث بن عوف",
-      actionLabel: "اتصل بفرع القويسمة",
-      actionHref: "tel:0788088097"
-    },
-    {
       icon: <MapPin className="w-6 h-6 text-[#2d7a1f]" />,
       title: "مبيعات الجملة",
       details: "0788088027",

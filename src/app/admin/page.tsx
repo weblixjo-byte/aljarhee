@@ -1673,7 +1673,7 @@ export default function AdminPage() {
                     : "border-transparent text-slate-400 hover:text-slate-650"
                 }`}
               >
-                صور الموديلات ({Array.from(new Set(products.map(p => p.model).filter(Boolean))).length})
+                صور الموديلات ({(() => { const seen = new Set(); products.forEach(p => { if (p.model && p.year) seen.add(p.model.trim().toLowerCase() + "_" + p.year.trim().toLowerCase()); }); return seen.size; })()})
               </button>
             </div>
 
@@ -1758,26 +1758,42 @@ export default function AdminPage() {
             {imagesSubTab === "models" && (
               <div className="flex flex-col gap-6">
                 {(() => {
-                  const uniqueModels = Array.from(new Set(products.map(p => p.model).filter(Boolean)));
-                  if (uniqueModels.length === 0) {
+                  const uniqueModelCombos: { model: string; year: string }[] = [];
+                  const seenCombos = new Set<string>();
+                  products.forEach(p => {
+                    if (p.model && p.year) {
+                      const key = `${p.model.trim().toLowerCase()}_${p.year.trim().toLowerCase()}`;
+                      if (!seenCombos.has(key)) {
+                        seenCombos.add(key);
+                        uniqueModelCombos.push({
+                          model: p.model.trim(),
+                          year: p.year.trim()
+                        });
+                      }
+                    }
+                  });
+                  uniqueModelCombos.sort((a, b) => a.model.localeCompare(b.model) || a.year.localeCompare(b.year));
+
+                  if (uniqueModelCombos.length === 0) {
                     return <div className="text-center py-10 text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">لا توجد موديلات مسجلة بالموقع حالياً.</div>;
                   }
                   return (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      {uniqueModels.map(modelName => {
-                        const key = modelName.toLowerCase();
-                        const currentVal = tempModelImages[key] !== undefined ? tempModelImages[key] : (modelSettings[key] || "");
+                      {uniqueModelCombos.map(combo => {
+                        const comboKey = `${combo.model.toLowerCase()}_${combo.year.toLowerCase()}`;
+                        const label = `${combo.model} (${combo.year})`;
+                        const currentVal = tempModelImages[comboKey] !== undefined ? tempModelImages[comboKey] : (modelSettings[comboKey] || "");
                         return (
-                          <div key={modelName} className="flex flex-col gap-1.5 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 text-right">
+                          <div key={comboKey} className="flex flex-col gap-1.5 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 text-right">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-black text-slate-800">{modelName}</span>
+                              <span className="text-xs font-black text-slate-800">{label}</span>
                               {currentVal && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف</span>}
                             </div>
                             <div className="flex gap-2 mt-1">
                               <input
                                 type="text"
                                 value={currentVal}
-                                onChange={(e) => handleModelImageChange(modelName, e.target.value)}
+                                onChange={(e) => handleModelImageChange(comboKey, e.target.value)}
                                 placeholder="أدخل رابط صورة الموديل (مثال: https://...)"
                                 className="flex-1 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:outline-none text-xs font-en"
                               />

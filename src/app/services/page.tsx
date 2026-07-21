@@ -152,7 +152,7 @@ export default function ServicesPage() {
             <div className="max-w-xl">
               <h3 className="text-lg sm:text-xl font-black mb-2.5">هل ترغب بحجز موعد لفحص سيارتك؟</h3>
               <p className="text-slate-400 text-xs sm:text-sm leading-relaxed font-medium">
-                تواصل معنا مباشرة عبر الواتساب لتحديد الموعد الأنسب لك في فرع البيادر أو فرع القويسمة.
+                تواصل معنا مباشرة عبر الواتساب لتحديد الموعد الأنسب لك في فرع البيادر.
               </p>
             </div>
             

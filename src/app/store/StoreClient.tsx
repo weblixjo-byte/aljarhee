@@ -32,7 +32,7 @@ const BRANDS = [
     key: "toyota",
     name: "تويوتا",
     logo: (
-      <svg viewBox="0 0 100 65" className="w-20 h-auto transition-transform group-hover:scale-105 duration-300 fill-current" aria-hidden="true">
+      <svg viewBox="0 0 100 65" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300 fill-current" aria-hidden="true">
         <path d="M50 0C22.4 0 0 14.5 0 32.5S22.4 65 50 65s50-14.5 50-32.5S77.6 0 50 0zm0 58.5C26.5 58.5 7.5 46.8 7.5 32.5S26.5 6.5 50 6.5s42.5 11.7 42.5 26S73.5 58.5 50 58.5z"/>
         <path d="M50 8.5C36.2 8.5 25 19.3 25 32.5c0 10.7 7.4 19.8 17.5 22.9V49c-6.8-2.6-11.5-9.1-11.5-16.5 0-9.9 8.5-18 19-18s19 8.1 19 18c0 7.4-4.7 13.9-11.5 16.5v6.4c10.1-3.1 17.5-12.2 17.5-22.9 0-13.2-11.2-24-25-24z"/>
         <path d="M50 14.5c-4.1 0-7.5 8.1-7.5 18s3.4 18 7.5 18 7.5-8.1 7.5-18-3.4-18-7.5-18zm0 31.5c-1.9 0-3.5-6.1-3.5-13.5s1.6-13.5 3.5-13.5 3.5 6.1 3.5 13.5-1.6 13.5-3.5 13.5z"/>
@@ -43,7 +43,7 @@ const BRANDS = [
     key: "lexus",
     name: "لكزس",
     logo: (
-      <svg viewBox="0 0 120 80" className="w-20 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="5" aria-hidden="true">
+      <svg viewBox="0 0 120 80" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="5" aria-hidden="true">
         <ellipse cx="60" cy="35" rx="48" ry="28" />
         <path d="M35 25 L50 53 L85 24 M50 53 L90 53" strokeLinecap="round" strokeLinejoin="round" strokeWidth="5" />
         <text x="60" y="76" fontFamily="var(--font-outfit), sans-serif" fontSize="11" fontWeight="900" letterSpacing="4" textAnchor="middle" fill="currentColor" stroke="none">LEXUS</text>
@@ -54,7 +54,7 @@ const BRANDS = [
     key: "nissan",
     name: "نيسان",
     logo: (
-      <svg viewBox="0 0 100 100" className="w-18 h-auto transition-transform group-hover:scale-105 duration-300 fill-current" aria-hidden="true">
+      <svg viewBox="0 0 100 100" className="w-20 h-auto transition-transform group-hover:scale-105 duration-300 fill-current" aria-hidden="true">
         <path d="M50 10C27.9 10 10 27.9 10 50s17.9 40 40 40 40-17.9 40-40-17.9-40-40-40zm0 72c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32z"/>
         <rect x="5" y="42" width="90" height="16" rx="2" />
         <text x="50" y="52" fontFamily="var(--font-outfit), sans-serif" fontSize="10" fontWeight="bold" letterSpacing="2" textAnchor="middle" fill="white">NISSAN</text>
@@ -65,7 +65,7 @@ const BRANDS = [
     key: "ford",
     name: "فورد",
     logo: (
-      <svg viewBox="0 0 120 70" className="w-22 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="4" aria-hidden="true">
+      <svg viewBox="0 0 120 70" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="4" aria-hidden="true">
         <ellipse cx="60" cy="35" rx="52" ry="28" />
         <ellipse cx="60" cy="35" rx="48" ry="24" strokeWidth="1.5" />
         <text x="60" y="44" fontFamily="Georgia, serif" fontSize="24" fontWeight="bold" fontStyle="italic" textAnchor="middle" fill="currentColor" stroke="none">Ford</text>
@@ -76,7 +76,7 @@ const BRANDS = [
     key: "lincoln",
     name: "لينكولن",
     logo: (
-      <svg viewBox="0 0 120 80" className="w-22 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+      <svg viewBox="0 0 120 80" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
         <rect x="48" y="10" width="24" height="42" rx="10" />
         <line x1="60" y1="15" x2="60" y2="47" strokeWidth="2.5" />
         <line x1="52" y1="31" x2="68" y2="31" strokeWidth="2.5" />
@@ -85,12 +85,6 @@ const BRANDS = [
       </svg>
     )
   }
-];
-
-const STATIC_CATEGORIES = [
-  { key: "body", label: "قطع بودي" },
-  { key: "electrical", label: "قطع كهرباء" },
-  { key: "mechanical", label: "قطع ميكانيك" },
 ];
 
 function StoreContent() {
@@ -138,11 +132,11 @@ function StoreContent() {
       const staticBrand = BRANDS.find((sb) => sb.key === key);
 
       const logo = imageUrl ? (
-        <img src={imageUrl} alt={bName} className="h-14 w-auto object-contain transition-transform group-hover:scale-105 duration-300" />
+        <img src={imageUrl} alt={bName} className="h-20 w-auto object-contain transition-transform group-hover:scale-105 duration-300" />
       ) : staticBrand ? (
         staticBrand.logo
       ) : (
-        <span className="text-sm font-black text-slate-800 uppercase font-en">{bName}</span>
+        <span className="text-base font-black text-slate-800 uppercase font-en">{bName}</span>
       );
 
       return {
@@ -329,38 +323,34 @@ function StoreContent() {
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans pb-24 pt-[80px]" dir="rtl">
       
-      {/* ── Premium Hero Header ── */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-[#184510] to-slate-900 text-white py-16 sm:py-20 text-center mb-10 shadow-lg">
-        {/* Decorative Grid and Blur Patterns */}
-        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-400 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full bg-emerald-700/20 blur-3xl pointer-events-none" />
-        
-        <div className="relative max-w-4xl mx-auto px-4">
-          <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black text-[10px] px-3.5 py-1.5 rounded-full uppercase tracking-wider mb-4 animate-pulse">
-            <Sparkle size={10} className="fill-emerald-400" />
-            <span>كتالوج الجارحي الحديث</span>
+      {/* ── World-Class Minimalist Header ── */}
+      <div className="bg-white border-b border-slate-100 py-16 text-center mb-10">
+        <div className="max-w-4xl mx-auto px-4">
+          <span className="inline-flex items-center gap-1 bg-[#2d7a1f]/5 border border-[#2d7a1f]/10 text-[#2d7a1f] font-black text-[10px] px-3.5 py-1.5 rounded-full uppercase tracking-wider mb-4">
+            <Sparkle size={10} className="fill-[#2d7a1f]" />
+            <span>متجر قطع غيار السيارات</span>
           </span>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-4 text-white leading-tight">
-            تصفح وابحث عن قطع غيار سيارتك
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-3 text-slate-900 leading-tight">
+            كتالوج قطع الغيار الأصلي
           </h1>
-          <p className="text-slate-300 text-xs sm:text-sm font-bold leading-relaxed max-w-lg mx-auto mb-8">
-            نظام فرز وتصفية ذكي يساعدك على تصفح قطع الهيكل، الميكانيك، والكهرباء المطابقة لموديل وسنة صنع سيارتك بدقة متكاملة.
+          <p className="text-slate-400 text-xs sm:text-xs font-bold leading-relaxed max-w-lg mx-auto mb-8">
+            تصفح أو ابحث مباشرة للوصول إلى قطع غيار البودي، الكهرباء، والميكانيك الملائمة لسيارتك بدقة.
           </p>
 
-          {/* Elegant Floating Search Input */}
+          {/* Clean SaaS-Style Search Input */}
           <div className="max-w-md mx-auto relative px-4">
             <input
               type="text"
-              placeholder="ابحث بالاسم، الرقم، أو الموديل (مثال: فوانيس، بريوس...)"
+              placeholder="ابحث بالاسم، الرقم، أو الموديل (مثال: حساس، بريوس...)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/10 text-white backdrop-blur-md rounded-2xl py-4 pr-11 pl-4 text-xs font-bold border border-white/15 focus:border-emerald-500 focus:bg-white focus:text-slate-900 shadow-md font-sans outline-none text-right placeholder-slate-400 transition-all duration-300"
+              className="w-full bg-slate-50 hover:bg-slate-100/50 text-slate-800 rounded-2xl py-3.5 pr-11 pl-4 text-xs font-bold border border-slate-200/80 focus:border-[#2d7a1f] focus:bg-white focus:ring-4 focus:ring-[#2d7a1f]/5 shadow-xs font-sans outline-none text-right placeholder-slate-400 transition-all duration-300"
             />
             <Search className="absolute top-1/2 right-7.5 -translate-y-1/2 text-slate-400" size={16} />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute top-1/2 left-7.5 -translate-y-1/2 text-slate-400 hover:text-slate-200 bg-white/5 hover:bg-white/10 rounded-lg p-1 border-0 cursor-pointer transition-colors"
+                className="absolute top-1/2 left-7.5 -translate-y-1/2 text-slate-400 hover:text-slate-650 bg-slate-200/50 rounded-lg p-1 border-0 cursor-pointer transition-colors"
               >
                 <X size={12} />
               </button>
@@ -371,53 +361,60 @@ function StoreContent() {
 
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* ── Wizard Progress Trail ── */}
+        {/* ── Modern Dynamic Stepper (Open Layout) ── */}
         {!isSearchActive && (
-          <div className="max-w-3xl mx-auto flex items-center justify-between bg-white border border-slate-100 rounded-3xl p-5 mb-10 shadow-xs gap-3 text-[11px] font-black text-slate-400">
-            <button 
-              onClick={resetAll}
-              className={`flex items-center gap-2 border-0 bg-transparent cursor-pointer font-bold ${step >= 0 ? "text-[#2d7a1f]" : ""}`}
-            >
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all ${step >= 0 ? "bg-[#2d7a1f] text-white shadow-sm shadow-[#2d7a1f]/20 scale-110" : "bg-slate-100 text-slate-500"}`}>١</span>
-              <span>نوع السيارة</span>
-            </button>
+          <div className="max-w-2xl mx-auto flex items-center justify-between py-6 mb-12 relative select-none" dir="rtl">
+            {/* Connecting Line Background */}
+            <div className="absolute top-[21px] left-8 right-8 h-0.5 bg-slate-200/70 -z-10 rounded-full" />
+            {/* Connecting Line Progress */}
+            <div 
+              className="absolute top-[21px] right-8 h-0.5 bg-[#2d7a1f] -z-10 rounded-full transition-all duration-500" 
+              style={{ width: `${(step / 3) * 100}%`, left: 'auto' }}
+            />
             
-            <div className={`flex-1 h-0.5 mx-2 rounded-full ${step >= 1 ? "bg-[#2d7a1f]/40" : "bg-slate-100"}`} />
-            
-            <button 
-              onClick={() => { if (selectedBrand) { setSelectedModel(null); setSelectedYear(null); setSelectedCategory(null); } }}
-              disabled={!selectedBrand}
-              className={`flex items-center gap-2 border-0 bg-transparent cursor-pointer font-bold disabled:opacity-50 disabled:cursor-not-allowed ${step >= 1 ? "text-[#2d7a1f]" : ""}`}
-            >
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all ${step >= 1 ? "bg-[#2d7a1f] text-white shadow-sm shadow-[#2d7a1f]/20 scale-110" : "bg-slate-100 text-slate-500"}`}>٢</span>
-              <span>الموديل والسنة</span>
-            </button>
-            
-            <div className={`flex-1 h-0.5 mx-2 rounded-full ${step >= 2 ? "bg-[#2d7a1f]/40" : "bg-slate-100"}`} />
-            
-            <button 
-              onClick={() => { if (selectedModel) { setSelectedCategory(null); } }}
-              disabled={!selectedModel}
-              className={`flex items-center gap-2 border-0 bg-transparent cursor-pointer font-bold disabled:opacity-50 disabled:cursor-not-allowed ${step >= 2 ? "text-[#2d7a1f]" : ""}`}
-            >
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all ${step >= 2 ? "bg-[#2d7a1f] text-white shadow-sm shadow-[#2d7a1f]/20 scale-110" : "bg-slate-100 text-slate-500"}`}>٣</span>
-              <span>القسم الرئيسي</span>
-            </button>
-            
-            <div className={`flex-1 h-0.5 mx-2 rounded-full ${step >= 3 ? "bg-[#2d7a1f]/40" : "bg-slate-100"}`} />
-            
-            <div className={`flex items-center gap-2 font-bold ${step >= 3 ? "text-[#2d7a1f]" : ""}`}>
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all ${step >= 3 ? "bg-[#2d7a1f] text-white shadow-sm shadow-[#2d7a1f]/20 scale-110" : "bg-slate-100 text-slate-500"}`}>٤</span>
-              <span>تصفح القطع</span>
-            </div>
+            {/* Steps */}
+            {[
+              { index: 0, label: "نوع السيارة" },
+              { index: 1, label: "الموديل والسنة" },
+              { index: 2, label: "القسم الرئيسي" },
+              { index: 3, label: "تصفح القطع" }
+            ].map((s) => {
+              const isCompleted = step > s.index;
+              const isActive = step === s.index;
+              return (
+                <div key={s.index} className="flex flex-col items-center gap-2.5 text-center">
+                  <button
+                    type="button"
+                    disabled={s.index > step && !isCompleted}
+                    onClick={() => {
+                      if (s.index === 0) resetAll();
+                      else if (s.index === 1 && selectedBrand) { setSelectedModel(null); setSelectedYear(null); setSelectedCategory(null); }
+                      else if (s.index === 2 && selectedModel) { setSelectedCategory(null); }
+                    }}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black transition-all border-2 cursor-pointer outline-none shadow-xs ${
+                      isActive
+                        ? "bg-[#2d7a1f] border-[#2d7a1f] text-white ring-4 ring-[#2d7a1f]/10 scale-110"
+                        : isCompleted
+                          ? "bg-[#2d7a1f]/10 border-[#2d7a1f] text-[#2d7a1f]"
+                          : "bg-white border-slate-200 text-slate-400 disabled:cursor-not-allowed"
+                    }`}
+                  >
+                    {isCompleted ? "✓" : s.index + 1}
+                  </button>
+                  <span className={`text-[10px] font-black tracking-wide ${isActive ? "text-[#2d7a1f]" : isCompleted ? "text-slate-800" : "text-slate-400"}`}>
+                    {s.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {/* ── Step 0: Choose Brand ── */}
+        {/* ── Step 0: Choose Brand (Large Cards Layout) ── */}
         {step === 0 && (
           <div className="bg-white border border-slate-100 rounded-3xl p-8 sm:p-12 shadow-xs text-center">
-            <h2 className="text-[#2d7a1f] text-lg sm:text-xl font-black tracking-tight mb-8">
-              اختر نوع سيارتك للبدء
+            <h2 className="text-slate-800 text-base sm:text-lg font-black tracking-tight mb-8">
+              اختر ماركة السيارة للبدء
             </h2>
             
             {dynamicBrands.length === 0 ? (
@@ -431,18 +428,18 @@ function StoreContent() {
                 </p>
               </div>
             ) : (
-              <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 max-w-4xl mx-auto mb-6">
+              <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 max-w-5xl mx-auto mb-6">
                 {dynamicBrands.map((brand) => (
                   <button
                     key={brand.key}
                     onClick={() => handleBrandSelect(brand.key)}
-                    className="group bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-[#2d7a1f] rounded-3xl p-6 w-[130px] h-[130px] sm:w-[160px] sm:h-[160px] flex flex-col items-center justify-center gap-4 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_12px_45px_rgba(45,122,31,0.08)] hover:-translate-y-1"
+                    className="group bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-[#2d7a1f] rounded-3xl p-8 w-[160px] h-[160px] sm:w-[200px] sm:h-[200px] flex flex-col items-center justify-center gap-5 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_12px_45px_rgba(45,122,31,0.06)] hover:-translate-y-1"
                     aria-label={brand.name}
                   >
-                    <div className="text-slate-700 group-hover:text-[#2d7a1f] transition-colors duration-300 flex items-center justify-center h-16 w-full overflow-hidden">
+                    <div className="text-slate-700 group-hover:text-[#2d7a1f] transition-colors duration-300 flex items-center justify-center h-20 w-full overflow-hidden">
                       {brand.logo}
                     </div>
-                    <span className="text-xs font-black text-slate-800 group-hover:text-[#2d7a1f] transition-colors">
+                    <span className="text-xs sm:text-sm font-black text-slate-800 group-hover:text-[#2d7a1f] transition-colors">
                       {brand.name}
                     </span>
                   </button>
@@ -454,7 +451,7 @@ function StoreContent() {
               <div className="mt-10 border-t border-slate-100 pt-8">
                 <button
                   onClick={() => { setSelectedBrand("all"); setSelectedModel("all"); setSelectedYear("all"); setSelectedCategory("all"); }}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-650 font-black text-xs px-8 py-4 rounded-2xl border-0 cursor-pointer transition-colors shadow-xs"
+                  className="bg-slate-50 hover:bg-slate-100 text-slate-600 font-black text-xs px-8 py-3.5 rounded-xl border border-slate-200/50 cursor-pointer transition-colors shadow-xs"
                 >
                   تصفح جميع قطع الغيار المتاحة بالموقع مباشرة
                 </button>
@@ -463,7 +460,7 @@ function StoreContent() {
           </div>
         )}
 
-        {/* ── Step 1: Choose Model & Year ── */}
+        {/* ── Step 1: Choose Model & Year (Distinct Combos with distinct images) ── */}
         {step === 1 && selectedBrand && (
           <div className="bg-white border border-slate-100 rounded-3xl p-8 sm:p-10 shadow-xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-5 mb-8">
@@ -493,8 +490,8 @@ function StoreContent() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
                 {modelYearCombos.map((combo) => {
-                  const modelKey = combo.model.toLowerCase();
-                  const imageUrl = modelSettings[modelKey] || "/assets/images/placeholder-product.png";
+                  const comboKey = `${combo.model.toLowerCase()}_${combo.year.toLowerCase()}`;
+                  const imageUrl = modelSettings[comboKey] || "/assets/images/placeholder-product.png";
                   return (
                     <button
                       key={`${combo.model}_${combo.year}`}
@@ -557,7 +554,7 @@ function StoreContent() {
               </button>
             </div>
 
-            <h2 className="text-[#2d7a1f] text-lg font-black tracking-tight mb-8">
+            <h2 className="text-slate-800 text-base sm:text-lg font-black tracking-tight mb-8">
               اختر قسم قطع الغيار المطلوب
             </h2>
 

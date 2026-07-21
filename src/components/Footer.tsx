@@ -87,10 +87,8 @@ export default function Footer() {
               <li className="flex gap-3 text-right">
                 <MapPin className="text-white shrink-0 mt-0.5" size={16} />
                 <div className="flex flex-col gap-1 text-[0.7rem]">
-                  <span className="font-bold text-white">الفرع الأول - البيادر:</span>
+                   <span className="font-bold text-white">الفرع الأول - البيادر:</span>
                   <span>عمان - البيادر - إشارات الصناعة - بجانب الكابتن.</span>
-                  <span className="font-bold text-white mt-1.5">الفرع الثاني - القويسمة:</span>
-                  <span>عمان - القويسمة الصناعية - شارع الحارث بن عوف.</span>
                 </div>
               </li>
               <li className="flex items-center gap-3">
@@ -98,9 +96,6 @@ export default function Footer() {
                 <div className="flex flex-col font-en gap-0.5 text-left text-[0.72rem]">
                   <a href="tel:0789089842" className="hover:text-white transition-colors font-bold text-white">
                     فرع البيادر: 0789089842
-                  </a>
-                  <a href="tel:0788088097" className="hover:text-white transition-colors">
-                    فرع القويسمة: 0788088097
                   </a>
                   <a href="tel:0788088027" className="hover:text-white transition-colors">
                     مبيعات الجملة: 0788088027
