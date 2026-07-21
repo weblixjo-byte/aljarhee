@@ -46,8 +46,8 @@ interface ImportedRow {
   [key: string]: any;
 }
 
-// Custom RFC-compliant CSV parser that handles quotes, escaping, and line breaks
-function parseCSV(text: string): any[] {
+// Custom RFC-compliant CSV parser that handles quotes, escaping, and line breaks, returning a 2D array of cells
+function parseCSV(text: string): any[][] {
   const lines: string[] = [];
   let currentLine = "";
   let inQuotes = false;
@@ -89,21 +89,7 @@ function parseCSV(text: string): any[] {
   const semicolonCount = (firstLine.match(/;/g) || []).length;
   const separator = semicolonCount > commaCount ? ";" : ",";
   
-  // Extract headers
-  const headers = parseCSVLine(lines[0], separator);
-  const result: any[] = [];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    const values = parseCSVLine(lines[i], separator);
-    const obj: any = {};
-    headers.forEach((header, index) => {
-      obj[header.trim()] = values[index] !== undefined ? values[index].trim() : "";
-    });
-    result.push(obj);
-  }
-  return result;
+  return lines.map(line => parseCSVLine(line, separator));
 }
 
 function parseCSVLine(line: string, separator: string): string[] {
@@ -491,7 +477,7 @@ export default function AdminPage() {
         const data = e.target?.result;
         if (!data) return;
 
-        let rows: any[] = [];
+        let rawRows: any[][] = [];
         const isCSV = file.name.toLowerCase().endsWith(".csv");
 
         if (isCSV) {
@@ -518,165 +504,162 @@ export default function AdminPage() {
           }
           
           console.log(`Auto-selected CSV encoding with ${maxArabicCount} Arabic characters.`);
-          rows = parseCSV(bestText);
+          rawRows = parseCSV(bestText);
         } else {
           const workbook = XLSX.read(data, { type: "array" });
           const sheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[sheetName];
-          rows = XLSX.utils.sheet_to_json<any>(worksheet);
+          rawRows = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
         }
 
-        if (rows.length === 0) {
+        if (rawRows.length === 0) {
           showToast("الملف المرفوع فارغ ولا يحتوي على أي بيانات.", "error");
           return;
         }
 
-        // Print diagnostic headers to console for debugging
-        const fileHeaders = Object.keys(rows[0] || {});
-        console.log("Excel Headers detected:", fileHeaders);
-
-        // Helper to extract fields using keywords or exact list
-        const getFieldValue = (row: any, searchKeys: string[], defaultVal: any = "") => {
-          // 1. Try exact matches
-          for (const key of searchKeys) {
-            if (row[key] !== undefined && row[key] !== null) {
-              return row[key];
-            }
-          }
-          // 2. Try case-insensitive, space/hyphen/underscore insensitive keyword matching
-          const normalizedSearchKeys = searchKeys.map(k => k.toLowerCase().replace(/[-_\s()]/g, ""));
-          const rowKeys = Object.keys(row);
-          for (const rKey of rowKeys) {
-            const normalizedRowKey = rKey.toLowerCase().replace(/[-_\s()]/g, "");
-            for (const sKey of normalizedSearchKeys) {
-              if (normalizedRowKey === sKey || normalizedRowKey.includes(sKey)) {
-                return row[rKey];
-              }
-            }
-          }
-          return defaultVal;
+        let colIndices = {
+          title: -1,
+          brand: -1,
+          model: -1,
+          year: -1,
+          category: -1,
+          image: -1,
+          onsale: -1,
+          originalPrice: -1,
+          price2: -1
         };
 
-        // Map excel data to site Product format
-        const mappedProducts = rows.map((row, idx) => {
-          const titleRaw = getFieldValue(row, ["product name", "product_title", "product-title", "product title", "title", "name", "الاسم", "اسم المنتج"]);
+        const mappedProducts: any[] = [];
+
+        // Helper to check if a row is a header row
+        const isHeaderRow = (row: any[]) => {
+          if (!Array.isArray(row) || row.length === 0) return false;
+          let matchCount = 0;
+          const headerKeywords = [
+            "brand", "model", "year", "cat-products", "product-title", "product name", 
+            "price", "onsale", "fade-in src", "woocommerce", "الشركة", "الماركة", "الموديل", "السنة"
+          ];
+          row.forEach(cell => {
+            if (cell !== undefined && cell !== null) {
+              const valStr = String(cell).toLowerCase().trim();
+              if (headerKeywords.some(kw => valStr.includes(kw))) {
+                matchCount++;
+              }
+            }
+          });
+          return matchCount >= 3; // If at least 3 cells match header keywords
+        };
+
+        const updateColIndices = (row: any[]) => {
+          colIndices = {
+            title: -1,
+            brand: -1,
+            model: -1,
+            year: -1,
+            category: -1,
+            image: -1,
+            onsale: -1,
+            originalPrice: -1,
+            price2: -1
+          };
+
+          row.forEach((cell, idx) => {
+            if (cell === undefined || cell === null) return;
+            const val = String(cell).toLowerCase().trim();
+
+            // Title
+            if (
+              val === "product name" || val === "product-title" || val === "product title" || 
+              val === "title" || val === "name" || val === "الاسم" || val === "اسم المنتج" ||
+              val === "product_title"
+            ) {
+              colIndices.title = idx;
+            }
+            // Brand
+            else if (val === "brand" || val === "الشركة" || val === "الماركة") {
+              colIndices.brand = idx;
+            }
+            // Model
+            else if (val === "model" || val === "الموديل" || val === "الفئة") {
+              colIndices.model = idx;
+            }
+            // Year
+            else if (val === "year" || val === "السنة" || val === "سنة الصنع") {
+              colIndices.year = idx;
+            }
+            // Category
+            else if (
+              val === "last cat" || val === "last_cat" || val === "last-cat" || 
+              val === "cat-products" || val === "cat products" || val === "cat-products href" ||
+              val === "category" || val === "type" || val === "التصنيف" || val === "القسم"
+            ) {
+              colIndices.category = idx;
+            }
+            // Image
+            else if (
+              val === "fade-in src" || val === "fade_in_src" || val === "foto in src" || 
+              val === "foto_in_src" || val === "image" || val === "src" || val === "photo" || 
+              val === "الصورة" || val === "رابط الصورة"
+            ) {
+              colIndices.image = idx;
+            }
+            // Onsale
+            else if (val === "onsale" || val === "discount" || val === "sale" || val === "خصم") {
+              colIndices.onsale = idx;
+            }
+            // Original Price
+            else if (
+              val === "price-amount" || val === "price amount" || val === "price_amount" || 
+              val === "price" || val === "original_price" || val === "السعر" ||
+              val === "woocommerce-price-amount"
+            ) {
+              colIndices.originalPrice = idx;
+            }
+            // Price 2
+            else if (
+              val === "price-amount (2)" || val === "price amount (2)" || val === "price_amount (2)" || 
+              val === "price2" || val === "sale_price" || val === "woocommerce-price-amount (2)" ||
+              val === "woocommerce-price-amount(2)"
+            ) {
+              colIndices.price2 = idx;
+            }
+          });
+        };
+
+        rawRows.forEach((row, idx) => {
+          if (!Array.isArray(row) || row.length === 0) return;
+
+          // Check if it is a header row
+          if (isHeaderRow(row)) {
+            updateColIndices(row);
+            return;
+          }
+
+          // Skip if no columns mapped yet
+          if (colIndices.title === -1 && colIndices.image === -1) {
+            return;
+          }
+
+          // Parse product name
+          const titleRaw = colIndices.title !== -1 ? row[colIndices.title] : "";
           let title = String(titleRaw || "").trim();
 
-          // FALLBACK: If title is empty, consists ONLY of question marks, OR contains any question marks "?" (Excel export error)
-          const hasQuestionMarks = title.includes("?");
-          const isOnlyQuestionMarks = title === "" || /^[?\s]+$/.test(title);
-          
-          if (isOnlyQuestionMarks || hasQuestionMarks) {
-            const linkRaw = getFieldValue(row, ["woocommerce-LoopProduct-link href", "woocommerce_LoopProduct_link_href", "link", "href", "url"]);
-            if (linkRaw) {
-              const linkStr = String(linkRaw).trim();
-              try {
-                const match = linkStr.match(/\/product\/([^/?#]+)/);
-                if (match && match[1]) {
-                  const decodedUrlTitle = decodeURIComponent(match[1]).replace(/[-_]/g, " ").trim();
-                  // Only replace if the URL decoded title is valid and doesn't contain question marks
-                  if (decodedUrlTitle && !decodedUrlTitle.includes("?")) {
-                    title = decodedUrlTitle;
-                  }
-                }
-              } catch (e) {
-                console.warn("Failed to extract title from URL:", linkRaw);
-              }
-            }
-          }
-
-          // Default placeholder name if completely missing or still contains question marks
-          if (!title || /^[?\s]+$/.test(title) || title.includes("?")) {
-            title = `قطعة غيار #${idx + 1}`;
-          }
-
-          const imageUrlRaw = getFieldValue(row, ["foto in src", "foto_in_src", "fade-in src", "fade_in_src", "image", "src", "photo", "الصورة", "رابط الصورة"]);
-          const imageUrl = String(imageUrlRaw || "").trim();
-
-          const categoryRaw = getFieldValue(row, ["cat products", "cat_products", "cat-products", "category", "type", "التصنيف", "القسم"]);
-          let categoryText = String(categoryRaw || "").trim();
-
-          // FALLBACK: If category is empty or corrupted with question marks, guess it from the parsed title
-          if (!categoryText || categoryText.includes("?")) {
-            const lowerTitle = title.toLowerCase();
-            if (lowerTitle.includes("بريك") || lowerTitle.includes("فحما")) {
-              categoryText = "بريكات";
-            } else if (lowerTitle.includes("بواجي") || lowerTitle.includes("بوجي")) {
-              categoryText = "بواجي";
-            } else if (lowerTitle.includes("فلتر") || lowerTitle.includes("فلاتر")) {
-              categoryText = "فلاتر";
-            } else if (lowerTitle.includes("ضو") || lowerTitle.includes("كشاف") || lowerTitle.includes("اضو") || lowerTitle.includes("عدس")) {
-              categoryText = "أضوية";
-            } else if (lowerTitle.includes("محرك") || lowerTitle.includes("موتور") || lowerTitle.includes("سلندر") || lowerTitle.includes("قشاط") || lowerTitle.includes("بستن")) {
-              categoryText = "محركات";
-            } else if (lowerTitle.includes("عرض") || lowerTitle.includes("خصم")) {
-              categoryText = "أحدث العروض";
-            } else {
-              categoryText = "جميع القطع";
-            }
-          }
-
-          const onsaleRaw = getFieldValue(row, ["onsale", "discount", "sale", "خصم"], 0);
-          const onsaleVal = parseFloat(String(onsaleRaw)) || 0;
-
-          const origPriceRaw = getFieldValue(row, ["Price amount", "Price-amount", "Price_amount", "price", "original_price", "السعر"], 0);
-          const originalPrice = parseFloat(String(origPriceRaw).replace(/[^\d.]/g, "")) || 0;
-
-          // Discounted Price
-          let priceRaw = row["Price amount (2)"] || row["Price-amount (2)"] || row["Price_amount (2)"] || row["price2"] || row["sale_price"];
-          if (priceRaw === undefined) {
-            const price2Keys = Object.keys(row).filter(k => k.includes("(2)") || k.includes(" 2") || k.includes("_2") || k.endsWith("2"));
-            if (price2Keys.length > 0) {
-              priceRaw = row[price2Keys[0]];
-            }
-          }
-          let price = parseFloat(String(priceRaw || "").replace(/[^\d.]/g, "")) || 0;
-
-          // Fallback calculations
-          if (price <= 0 && originalPrice > 0) {
-            if (onsaleVal < 0) {
-              price = Math.round(originalPrice * (1 + onsaleVal) * 100) / 100;
-            } else if (onsaleVal > 0 && onsaleVal < 1) {
-              price = Math.round(originalPrice * (1 - onsaleVal) * 100) / 100;
-            } else {
-              price = originalPrice;
-            }
-          }
-
-          // If price is still empty, scan row for any other positive numeric field, ignoring metadata/urls
-          if (price <= 0 && originalPrice <= 0) {
-            const numKeys = Object.keys(row);
-            for (const nk of numKeys) {
-              const lowerKey = nk.toLowerCase();
-              const isUrlOrMeta = 
-                lowerKey.includes("link") || 
-                lowerKey.includes("href") || 
-                lowerKey.includes("url") || 
-                lowerKey.includes("src") || 
-                lowerKey.includes("image") || 
-                lowerKey.includes("foto") || 
-                lowerKey.includes("photo") || 
-                lowerKey.includes("onsale") || 
-                lowerKey.includes("discount") || 
-                lowerKey.includes("id");
-
-              if (!isUrlOrMeta) {
-                const numVal = parseFloat(String(row[nk]).replace(/[^\d.]/g, ""));
-                if (numVal > 0) {
-                  price = numVal;
-                  break;
-                }
-              }
-            }
+          // Skip empty lines or header definitions that slipped through
+          if (!title || title.toLowerCase() === "screen-reader-text" || title.toLowerCase().includes("currencysymbol")) {
+            return;
           }
 
           const carDetails = detectCarDetails(title);
           const newArrival = idx % 5 === 0;
 
-          // Direct explicit columns from Excel if they exist, otherwise fall back to detected values
-          const rawBrand = getFieldValue(row, ["brand", "الشركة", "الماركة"]);
-          const rawModel = getFieldValue(row, ["model", "الموديل", "الفئة"]);
-          const rawYear = getFieldValue(row, ["year", "السنة", "سنة الصنع"]);
+          // Parse category
+          const categoryRaw = colIndices.category !== -1 ? row[colIndices.category] : "";
+          let categoryText = String(categoryRaw || "").trim();
+
+          // Parse brand, model, year
+          const rawBrand = colIndices.brand !== -1 ? row[colIndices.brand] : "";
+          const rawModel = colIndices.model !== -1 ? row[colIndices.model] : "";
+          const rawYear = colIndices.year !== -1 ? row[colIndices.year] : "";
 
           const mapBrand = (val: string): string => {
             const b = String(val || "").trim().toLowerCase();
@@ -688,60 +671,84 @@ export default function AdminPage() {
             return String(val || "").trim();
           };
 
-          const finalBrand = rawBrand ? mapBrand(rawBrand) : "all";
-          const finalModel = rawModel ? String(rawModel).trim() : "all";
-          const finalYear = rawYear ? String(rawYear).trim() : "all";
+          // Clean values (if they are URLs, discard them)
+          const cleanValue = (val: any): string => {
+            const s = String(val || "").trim();
+            if (s.startsWith("http")) return "";
+            return s;
+          };
 
-          // Parse final category from "last cat" column
-          const lastCatRaw = getFieldValue(row, ["last cat", "last_cat", "last-cat"]);
+          const finalBrand = cleanValue(rawBrand) ? mapBrand(cleanValue(rawBrand)) : "all";
+          const finalModel = cleanValue(rawModel) ? String(cleanValue(rawModel)).trim() : "all";
+          const finalYear = cleanValue(rawYear) ? String(cleanValue(rawYear)).trim() : "all";
+
+          // Parse prices
+          const onsaleRaw = colIndices.onsale !== -1 ? row[colIndices.onsale] : "";
+          const onsaleVal = parseFloat(String(onsaleRaw)) || 0;
+
+          const origPriceRaw = colIndices.originalPrice !== -1 ? row[colIndices.originalPrice] : "";
+          const originalPrice = parseFloat(String(origPriceRaw).replace(/[^\d.]/g, "")) || 0;
+
+          const priceRaw = colIndices.price2 !== -1 ? row[colIndices.price2] : "";
+          let price = parseFloat(String(priceRaw || "").replace(/[^\d.]/g, "")) || 0;
+
+          if (price <= 0 && originalPrice > 0) {
+            if (onsaleVal < 0) {
+              price = Math.round(originalPrice * (1 + onsaleVal) * 100) / 100;
+            } else if (onsaleVal > 0 && onsaleVal < 1) {
+              price = Math.round(originalPrice * (1 - onsaleVal) * 100) / 100;
+            } else {
+              price = originalPrice;
+            }
+          }
+
+          const imageUrlRaw = colIndices.image !== -1 ? row[colIndices.image] : "";
+          const imageUrl = String(imageUrlRaw || "").trim();
+
+          // Map Category
           let finalCategory = "all";
           let finalCategoryName = "جميع القطع";
-
-          if (lastCatRaw) {
-            const lc = String(lastCatRaw).trim().toLowerCase();
-            if (lc.includes("بودي") || lc.includes("body")) {
+          if (categoryText && !categoryText.startsWith("http")) {
+            if (categoryText.includes("بودي") || categoryText.includes("body")) {
               finalCategory = "body";
               finalCategoryName = "قطع بودي";
-            } else if (lc.includes("كهرباء") || lc.includes("كهربا") || lc.includes("electrical")) {
+            } else if (categoryText.includes("كهرباء") || categoryText.includes("electrical")) {
               finalCategory = "electrical";
               finalCategoryName = "قطع كهرباء";
-            } else if (lc.includes("ميكانيك") || lc.includes("mechanical")) {
+            } else if (categoryText.includes("ميكانيك") || categoryText.includes("mechanical")) {
               finalCategory = "mechanical";
               finalCategoryName = "قطع ميكانيك";
             } else {
-              finalCategory = mapCategory(lc);
-              finalCategoryName = String(lastCatRaw).trim();
+              finalCategory = mapCategory(categoryText);
+              finalCategoryName = categoryText;
             }
-          } else if (categoryText && categoryText !== "جميع القطع") {
-            finalCategory = mapCategory(categoryText);
-            finalCategoryName = categoryText;
           }
 
-          return {
-            id: idx + 1000,
+          mappedProducts.push({
+            id: mappedProducts.length + 1000,
             name: title,
             category: finalCategory,
             categoryName: finalCategoryName,
             brand: finalBrand,
             model: finalModel,
             year: finalYear,
-            price: price || 0, // Keep 0 if price is not specified (don't force 1.0 fallback)
+            price: price || 0,
             originalPrice: originalPrice > price ? originalPrice : undefined,
             condition: carDetails.condition,
             conditionText: carDetails.conditionText,
             image: imageUrl || "/assets/images/placeholder-product.png",
             description: `قطعة غيار أصلية متوافقة مع سيارات ${finalBrand === "all" ? "مختلف الأنواع" : finalBrand.toUpperCase()} ${finalModel === "all" ? "" : finalModel}، خاضعة لفحص الجودة وكفالة تشغيل حقيقية من مركز الجارحي.`,
-            featured: idx < 8,
+            featured: mappedProducts.length < 8,
             bestSeller: false,
             newArrival
-          };
+          });
         });
 
         // Filter out items that have completely empty names
         const validProducts = mappedProducts.filter(p => p.name && p.name.trim() !== "");
 
         if (validProducts.length === 0) {
-          showToast(`لم يتم العثور على منتجات صالحة. الأعمدة المكتشفة بالملف: ${fileHeaders.slice(0, 6).join(", ")}`, "error");
+          showToast("لم يتم العثور على منتجات صالحة في الملف المرفوع.", "error");
           return;
         }
 
