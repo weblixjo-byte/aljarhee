@@ -9,6 +9,7 @@ import { useToast } from "../context/ToastContext";
 import { productsData, Product, getProductCategory } from "../data/products";
 import { useProducts } from "../context/ProductContext";
 import { SITE_URL } from "../lib/config";
+import { useRouter } from "next/navigation";
 import { 
   Sparkles, 
   Flame, 
@@ -35,20 +36,73 @@ import {
   Mail
 } from "lucide-react";
 
+// List of available brands with premium vector SVGs as defaults
+const BRANDS = [
+  {
+    key: "toyota",
+    name: "تويوتا",
+    logo: (
+      <svg viewBox="0 0 100 65" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300 fill-current" aria-hidden="true">
+        <path d="M50 0C22.4 0 0 14.5 0 32.5S22.4 65 50 65s50-14.5 50-32.5S77.6 0 50 0zm0 58.5C26.5 58.5 7.5 46.8 7.5 32.5S26.5 6.5 50 6.5s42.5 11.7 42.5 26S73.5 58.5 50 58.5z"/>
+        <path d="M50 8.5C36.2 8.5 25 19.3 25 32.5c0 10.7 7.4 19.8 17.5 22.9V49c-6.8-2.6-11.5-9.1-11.5-16.5 0-9.9 8.5-18 19-18s19 8.1 19 18c0 7.4-4.7 13.9-11.5 16.5v6.4c10.1-3.1 17.5-12.2 17.5-22.9 0-13.2-11.2-24-25-24z"/>
+        <path d="M50 14.5c-4.1 0-7.5 8.1-7.5 18s3.4 18 7.5 18 7.5-8.1 7.5-18-3.4-18-7.5-18zm0 31.5c-1.9 0-3.5-6.1-3.5-13.5s1.6-13.5 3.5-13.5 3.5 6.1 3.5 13.5-1.6 13.5-3.5 13.5z"/>
+      </svg>
+    )
+  },
+  {
+    key: "lexus",
+    name: "لكزس",
+    logo: (
+      <svg viewBox="0 0 120 80" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="5" aria-hidden="true">
+        <ellipse cx="60" cy="35" rx="48" ry="28" />
+        <path d="M35 25 L50 53 L85 24 M50 53 L90 53" strokeLinecap="round" strokeLinejoin="round" strokeWidth="5" />
+        <text x="60" y="76" fontFamily="var(--font-outfit), sans-serif" fontSize="11" fontWeight="900" letterSpacing="4" textAnchor="middle" fill="currentColor" stroke="none">LEXUS</text>
+      </svg>
+    )
+  },
+  {
+    key: "nissan",
+    name: "نيسان",
+    logo: (
+      <svg viewBox="0 0 100 100" className="w-20 h-auto transition-transform group-hover:scale-105 duration-300 fill-current" aria-hidden="true">
+        <path d="M50 10C27.9 10 10 27.9 10 50s17.9 40 40 40 40-17.9 40-40-17.9-40-40-40zm0 72c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32z"/>
+        <rect x="5" y="42" width="90" height="16" rx="2" />
+        <text x="50" y="52" fontFamily="var(--font-outfit), sans-serif" fontSize="10" fontWeight="bold" letterSpacing="2" textAnchor="middle" fill="white">NISSAN</text>
+      </svg>
+    )
+  },
+  {
+    key: "ford",
+    name: "فورد",
+    logo: (
+      <svg viewBox="0 0 120 70" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="4" aria-hidden="true">
+        <ellipse cx="60" cy="35" rx="52" ry="28" />
+        <ellipse cx="60" cy="35" rx="48" ry="24" strokeWidth="1.5" />
+        <text x="60" y="44" fontFamily="Georgia, serif" fontSize="24" fontWeight="bold" fontStyle="italic" textAnchor="middle" fill="currentColor" stroke="none">Ford</text>
+      </svg>
+    )
+  },
+  {
+    key: "lincoln",
+    name: "لينكولن",
+    logo: (
+      <svg viewBox="0 0 120 80" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+        <rect x="48" y="10" width="24" height="42" rx="10" />
+        <line x1="60" y1="15" x2="60" y2="47" strokeWidth="2.5" />
+        <line x1="52" y1="31" x2="68" y2="31" strokeWidth="2.5" />
+        <path d="M 60 21 C 57 27 54 31 54 31 C 54 31 57 35 60 41 C 63 35 66 31 66 31 C 66 31 63 27 60 21 Z" fill="currentColor" stroke="none" />
+        <text x="60" y="70" fontFamily="var(--font-outfit), sans-serif" fontSize="9" fontWeight="950" letterSpacing="5" textAnchor="middle" fill="currentColor" stroke="none">LINCOLN</text>
+      </svg>
+    )
+  }
+];
+
 export default function Home() {
   const { showToast } = useToast();
-  const { products, loading } = useProducts();
+  const { products, brandSettings, loading } = useProducts();
+  const router = useRouter();
   const [activeTestimonial, setActiveTestimonial] = useState(0);
-  const [selectedHomeCategory, setSelectedHomeCategory] = useState("all");
-  const [randomHomeProducts, setRandomHomeProducts] = useState<Product[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  // Shuffle and set 6 random products for the "All" category tab
-  useEffect(() => {
-    if (products.length > 0 && randomHomeProducts.length === 0) {
-      setRandomHomeProducts([...products].sort(() => 0.5 - Math.random()).slice(0, 6));
-    }
-  }, [products, randomHomeProducts.length]);
 
   // Auto-play video with sound when it enters viewport, pause when scrolled away
   useEffect(() => {
@@ -161,12 +215,38 @@ export default function Home() {
   // Promotional deals (products with discount)
   const dealsProducts = products.filter((p) => p.originalPrice && p.originalPrice > p.price).slice(0, 2);
 
-  const categories = [
-    { id: "all", name: "الكل" },
-    { id: "mechanical", name: "محركات" },
-    { id: "body", name: "الهيكل والبودي" },
-    { id: "lights", name: "اضوية" },
-  ];
+  // Dynamic Brands mapping based on imported products
+  const getDynamicBrandsList = () => {
+    const uniqueBrandNames = Array.from(
+      new Set(products.map((p) => p.brand).filter(Boolean))
+    );
+
+    if (uniqueBrandNames.length === 0) {
+      return BRANDS;
+    }
+
+    return uniqueBrandNames.map((bName) => {
+      const key = bName.toLowerCase();
+      const imageUrl = brandSettings ? brandSettings[key] || "" : "";
+      const staticBrand = BRANDS.find((sb) => sb.key === key);
+
+      const logo = imageUrl ? (
+        <img src={imageUrl} alt={bName} className="h-20 w-auto object-contain transition-transform group-hover:scale-105 duration-350" />
+      ) : staticBrand ? (
+        staticBrand.logo
+      ) : (
+        <span className="text-base font-black text-slate-800 uppercase font-en">{bName}</span>
+      );
+
+      return {
+        key,
+        name: bName,
+        logo,
+      };
+    });
+  };
+
+  const dynamicBrands = getDynamicBrandsList();
 
   return (
     <>
@@ -248,194 +328,60 @@ export default function Home() {
         {/* Full-width Image Slider */}
         <HeroSlider />
 
-        {/* Categories Section (Interactive Catalog) */}
+        {/* Brands Selector Section (Quick Store Link Shortcut) */}
         <section className="py-20 bg-white border-b border-slate-50">
           <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
             {/* Section Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
               <div className="text-right">
-                <span className="text-brand-green text-xs font-black uppercase tracking-wider block mb-1.5 font-en">أقسام المتجر</span>
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">تصفح القطع حسب القسم</h2>
-                <p className="text-slate-400 text-xs font-bold mt-1">اختر التصنيف المطلوب لعرض المنتجات المتوفرة فوراً</p>
+                <span className="text-[#2d7a1f] text-xs font-black uppercase tracking-wider block mb-1.5 font-en">مساعد الشراء السريع</span>
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">اختر نوع سيارتك للبدء</h2>
+                <p className="text-slate-400 text-xs font-bold mt-1">اختر ماركة السيارة المطلوبة لعرض كافة القطع المتوافقة معها فوراً في المتجر</p>
               </div>
               <Link 
                 href="/store" 
-                className="inline-flex items-center gap-2 border border-slate-200 hover:border-brand-green hover:bg-brand-green/5 text-slate-600 hover:text-brand-green px-6 py-3 rounded-xl font-black text-xs transition-all shadow-sm shrink-0"
+                className="inline-flex items-center gap-2 border border-slate-200 hover:border-[#ffc72c] hover:bg-[#ffc72c]/5 text-slate-600 hover:text-slate-900 px-6 py-3 rounded-xl font-black text-xs transition-all shadow-sm shrink-0"
               >
                 تصفح المتجر بالكامل ←
               </Link>
             </div>
 
-            {/* Categories Tab Switcher */}
-            <div className="flex items-center gap-3 overflow-x-auto pb-4 mb-10 scrollbar-none justify-start md:justify-center w-full">
-              {categories.map((cat) => {
-                const isActive = cat.id === selectedHomeCategory;
-                return (
+            {/* Brands Selection Cards (Copied from Store Client for visual consistency) */}
+            {loading ? (
+              <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 max-w-5xl mx-auto">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="bg-white border border-slate-100 rounded-3xl p-8 w-[160px] h-[160px] sm:w-[200px] sm:h-[200px] animate-pulse flex flex-col items-center justify-center gap-4">
+                    <div className="w-16 h-16 bg-slate-50 rounded-2xl animate-pulse" />
+                    <div className="h-4 bg-slate-100 rounded-md w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : dynamicBrands.length === 0 ? (
+              <div className="text-center py-12 flex flex-col items-center gap-4">
+                <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center text-slate-400">
+                  <Car size={24} />
+                </div>
+                <h3 className="text-sm font-black text-slate-800">لا توجد ماركات متوفرة حالياً</h3>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 max-w-5xl mx-auto">
+                {dynamicBrands.map((brand) => (
                   <button
-                    key={cat.id}
-                    onClick={() => {
-                      setSelectedHomeCategory(cat.id);
-                      if (cat.id === "all") {
-                        setRandomHomeProducts([...products].sort(() => 0.5 - Math.random()).slice(0, 6));
-                      }
-                    }}
-                    className={`px-7 py-3 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer border-0 shadow-xs ${
-                      isActive
-                        ? "bg-[#2d7a1f] text-white shadow-md shadow-[#2d7a1f]/10 scale-102"
-                        : "bg-slate-50 hover:bg-slate-100 text-slate-750"
-                    }`}
+                    key={brand.key}
+                    onClick={() => router.push(`/store?brand=${brand.key}`)}
+                    className="group bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-[#2d7a1f] rounded-3xl p-8 w-[150px] h-[150px] sm:w-[190px] sm:h-[190px] flex flex-col items-center justify-center gap-4 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_12px_45px_rgba(45,122,31,0.06)] hover:-translate-y-1"
+                    aria-label={brand.name}
                   >
-                    <span>{cat.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Category Products Grid (Exact 6 products) */}
-            {(() => {
-              if (loading) {
-                return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[...Array(6)].map((_, i) => (
-                      <div key={i} className="bg-white rounded-3xl border border-slate-100 p-4 flex flex-col gap-4 animate-pulse">
-                        <div className="w-full aspect-square bg-slate-50 rounded-2xl animate-pulse" />
-                        <div className="h-3 bg-slate-100 rounded-md w-1/4" />
-                        <div className="h-4 bg-slate-100 rounded-md w-3/4" />
-                        <div className="h-3 bg-slate-100 rounded-md w-1/2" />
-                        <div className="flex justify-between items-center mt-auto pt-3 border-t border-slate-50">
-                          <div className="h-5 bg-slate-100 rounded-md w-1/4" />
-                          <div className="w-8 h-8 bg-slate-100 rounded-xl" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              }
-
-              const filteredList = selectedHomeCategory === "all"
-                ? randomHomeProducts
-                : products.filter(p => getProductCategory(p) === selectedHomeCategory).slice(0, 6);
-
-              if (filteredList.length > 0) {
-                return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredList.map((product) => {
-                      const hasDiscount = product.originalPrice && product.originalPrice > product.price;
-                      const discountPct = hasDiscount 
-                        ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
-                        : 0;
-
-                      return (
-                        <Link
-                          key={product.id}
-                          href={`/store/${product.id}`}
-                          className="group bg-white rounded-3xl overflow-hidden border border-slate-100 hover:border-slate-200/80 hover:shadow-[0_20px_40px_rgba(0,0,0,0.05)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between p-4 animate-fade-in text-right cursor-pointer"
-                        >
-                          {/* Image Area */}
-                          <div className="relative w-full aspect-square bg-slate-50/50 rounded-2xl flex items-center justify-center overflow-hidden p-2">
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-4/5 h-4/5 object-contain group-hover:scale-105 transition-transform duration-500"
-                              onError={(e) => {
-                                e.currentTarget.src = "/assets/images/placeholder-product.png";
-                              }}
-                            />
-                            
-                            {/* Top Action Tags */}
-                            {hasDiscount && (
-                              <span className="absolute top-3 right-3 bg-red-550 text-red-600 font-bold text-[0.62rem] px-2 py-0.5 rounded-md shadow-xs z-10 border border-red-100 bg-red-50">
-                                {discountPct}% خصم
-                              </span>
-                            )}
-                            
-                            {product.conditionText && (
-                              <span className="absolute top-3 left-3 bg-slate-100 text-slate-600 font-bold text-[0.62rem] px-2 py-0.5 rounded-md z-10">
-                                {product.conditionText}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Content Details */}
-                          <div className="pt-4 flex flex-col flex-1 text-right">
-                            {/* Brand Label */}
-                            <span className="text-[0.62rem] font-bold text-slate-400 uppercase tracking-wider mb-1 font-en">
-                              {product.brand}
-                            </span>
-                            
-                            {/* Title */}
-                            <h3 className="text-[0.88rem] font-black text-slate-800 leading-snug line-clamp-2 min-h-[2.4rem] hover:text-[#2d7a1f] transition-colors">
-                              {product.name}
-                            </h3>
-
-                            {/* Model & Year Details */}
-                            <p className="text-[0.65rem] font-bold text-slate-400 tracking-wide uppercase font-en mt-1">
-                              {product.model} · {product.year}
-                            </p>
-
-                            {/* Pricing & Add to Cart */}
-                            <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-50 mt-auto">
-                                {product.price > 0 ? (
-                                  <>
-                                    {hasDiscount && (
-                                      <span className="text-[0.65rem] font-bold text-slate-400 line-through mb-0.5">
-                                        {product.originalPrice} د.أ
-                                      </span>
-                                    )}
-                                    <span className="font-en text-base font-black text-slate-900">
-                                      {product.price} <span className="text-[0.65rem] font-bold text-slate-500 mr-0.5">د.أ</span>
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-xs font-black text-[#2d7a1f]">
-                                    طلب السعر
-                                  </span>
-                                )}
-
-                              <button
-                                onClick={(e) => handleAddToCart(product, e)}
-                                className="bg-[#2d7a1f] hover:bg-[#246118] text-white p-2.5 rounded-xl transition-all duration-300 shadow-sm flex items-center justify-center cursor-pointer border-0"
-                                title="أضف إلى السلة"
-                              >
-                                <ShoppingCart size={15} />
-                              </button>
-                            </div>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                );
-              } else {
-                return (
-                  <div className="bg-slate-50 border border-slate-100 rounded-3xl p-16 text-center flex flex-col items-center justify-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mb-2">
-                      <ShoppingCart size={22} />
+                    <div className="text-slate-700 group-hover:text-[#2d7a1f] transition-colors duration-300 flex items-center justify-center h-20 w-full overflow-hidden">
+                      {brand.logo}
                     </div>
-                    <h3 className="text-sm font-black text-slate-850">لا توجد قطع غيار متوفرة حالياً</h3>
-                    <p className="text-slate-400 text-xs font-bold max-w-sm">
-                      لم نجد أي قطع غيار مضافة في هذا القسم حالياً. يرجى التصفح لاحقاً.
-                    </p>
-                  </div>
-                );
-              }
-            })()}
-
-            {/* View All Button below */}
-            <div className="flex justify-center mt-12">
-              <Link
-                href={selectedHomeCategory === "all" ? "/store" : `/store?category=${selectedHomeCategory}`}
-                className="inline-flex items-center gap-2 bg-[#2d7a1f] hover:bg-[#246118] text-white px-8 py-3.5 rounded-2xl font-black text-xs transition-all shadow-md shadow-[#2d7a1f]/20 hover:-translate-y-0.5 cursor-pointer border-0"
-              >
-                <span>
-                  {selectedHomeCategory === "all" 
-                    ? "عرض كل منتجات المتجر" 
-                    : `عرض الكل في قسم ${categories.find(c => c.id === selectedHomeCategory)?.name || ""}`}
-                </span>
-                <span>←</span>
-              </Link>
-            </div>
-
+                    <span className="text-xs sm:text-sm font-black text-slate-800 group-hover:text-[#2d7a1f] transition-colors">
+                      {brand.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
