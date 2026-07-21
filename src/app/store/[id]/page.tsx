@@ -33,7 +33,8 @@ function getBrandName(brandKey: string): string {
 export async function generateStaticParams() {
   try {
     const products = await getProductsList();
-    return products.map((p) => ({
+    const displayProducts = products.filter((p) => p.id > 0);
+    return displayProducts.map((p) => ({
       id: String(p.id),
     }));
   } catch (e) {

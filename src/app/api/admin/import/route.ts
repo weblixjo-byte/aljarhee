@@ -97,11 +97,12 @@ export async function POST(req: NextRequest) {
       try {
         console.log(`Starting Supabase import for ${products.length} products...`);
 
-        // Clear existing products
+        // Clear existing products (preserve category settings with ID: 0 and orders with ID: -99)
         const { error: deleteError } = await supabaseAdmin
           .from("products")
           .delete()
-          .neq("id", 0);
+          .neq("id", 0)
+          .neq("id", -99);
 
         if (deleteError) {
           throw new Error(`Failed to clear existing products: ${deleteError.message}`);

@@ -44,7 +44,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       if (localData) {
         try {
           const parsed = JSON.parse(localData);
-          initialProducts = parsed.filter((p: any) => p.id !== 0);
+          initialProducts = parsed.filter((p: any) => p.id > 0);
           const settingsProduct = parsed.find((p: any) => p.id === 0);
           if (settingsProduct && settingsProduct.description && Object.keys(initialCats).length === 0) {
             try {
@@ -62,7 +62,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     if (initialProducts.length === 0) {
       const staticImported = importedProductsStatic as Product[];
       if (staticImported && staticImported.length > 0) {
-        initialProducts = staticImported.filter((p: any) => p.id !== 0);
+        initialProducts = staticImported.filter((p: any) => p.id > 0);
         const settingsProduct = staticImported.find((p: any) => p.id === 0);
         if (settingsProduct && settingsProduct.description && Object.keys(initialCats).length === 0) {
           try {
@@ -91,7 +91,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            const realProducts = data.filter((p: any) => p.id !== 0);
+            const realProducts = data.filter((p: any) => p.id > 0);
             const settingsProduct = data.find((p: any) => p.id === 0);
             
             setProducts(realProducts);
@@ -125,7 +125,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
 
   const importProducts = (newProducts: Product[]) => {
     localStorage.setItem("aljarhee_imported_products", JSON.stringify(newProducts));
-    const realProducts = newProducts.filter((p) => p.id !== 0);
+    const realProducts = newProducts.filter((p) => p.id > 0);
     setProducts(realProducts);
 
     // Call server API to persist (will write to Supabase or fallback to local disk)

@@ -48,13 +48,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Dynamically map every product to the sitemap
-  const productRoutes = allProducts.map((product) => ({
-    url: `${baseUrl}/store/${product.id}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  }));
+  // Dynamically map every product to the sitemap (excluding system rows)
+  const productRoutes = allProducts
+    .filter((product) => product.id > 0)
+    .map((product) => ({
+      url: `${baseUrl}/store/${product.id}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
 
   return [...routes, ...productRoutes];
 }

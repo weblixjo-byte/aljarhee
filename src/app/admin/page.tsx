@@ -27,7 +27,11 @@ import {
   Briefcase,
   MapPin,
   Calendar,
-  Loader2
+  Loader2,
+  ShoppingBag,
+  Bell,
+  ExternalLink,
+  Phone
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -141,9 +145,9 @@ export default function AdminPage() {
     withDiscount: 0,
   });
 
-  const [activeTab, setActiveTab] = useState<"import" | "manage" | "careers" | "categories">("import");
+  const [activeTab, setActiveTab] = useState<"import" | "manage" | "careers" | "categories" | "orders">("import");
 
-  const switchTab = (tab: "import" | "manage" | "careers" | "categories") => {
+  const switchTab = (tab: "import" | "manage" | "careers" | "categories" | "orders") => {
     setActiveTab(tab);
     if (typeof window !== "undefined") {
       localStorage.setItem("admin_active_tab", tab);
@@ -307,13 +311,166 @@ export default function AdminPage() {
   const [newCustomBrand, setNewCustomBrand] = useState("");
   const [newCustomModel, setNewCustomModel] = useState("");
 
+  // Orders tab states
+  const [orders, setOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersSearch, setOrdersSearch] = useState("");
+  const [ordersStatusFilter, setOrdersStatusFilter] = useState<"all" | "pending" | "completed" | "cancelled">("all");
+  
+  // Pushover states
+  const [pushoverToken, setPushoverToken] = useState("");
+  const [pushoverUser, setPushoverUser] = useState("");
+  const [isSavingPushover, setIsSavingPushover] = useState(false);
+
+  // Load orders and pushover settings from database
+  const loadOrdersAndSettings = async () => {
+    try {
+      setOrdersLoading(true);
+      
+      // 1. Fetch orders from API
+      const ordersRes = await fetch("/api/admin/orders");
+      if (ordersRes.ok) {
+        const ordersData = await ordersRes.json();
+        setOrders(ordersData || []);
+      }
+
+      // 2. Fetch Pushover credentials from settings (row ID: 0)
+      if (supabase) {
+        const { data: settingsRow } = await supabase
+          .from("products")
+          .select("description")
+          .eq("id", 0)
+          .single();
+
+        if (settingsRow && settingsRow.description) {
+          try {
+            const parsed = JSON.parse(settingsRow.description);
+            setPushoverToken(parsed.pushoverToken || "");
+            setPushoverUser(parsed.pushoverUser || "");
+          } catch (e) {}
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load orders or settings:", err);
+      showToast("حدث خطأ أثناء تحميل الطلبات والإعدادات.", "error");
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: "pending" | "completed" | "cancelled") => {
+    const updated = orders.map((o: any) => {
+      if (o.id === orderId) {
+        return { ...o, status: newStatus };
+      }
+      return o;
+    });
+
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updated),
+      });
+
+      if (res.ok) {
+        setOrders(updated);
+        showToast("تم تحديث حالة الطلب بنجاح!", "success");
+      } else {
+        throw new Error("Failed to update status");
+      }
+    } catch (err) {
+      showToast("حدث خطأ أثناء تحديث حالة الطلب.", "error");
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا الطلب نهائياً؟")) return;
+
+    const updated = orders.filter((o: any) => o.id !== orderId);
+
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updated),
+      });
+
+      if (res.ok) {
+        setOrders(updated);
+        showToast("تم حذف الطلب بنجاح!", "success");
+      } else {
+        throw new Error("Failed to delete order");
+      }
+    } catch (err) {
+      showToast("حدث خطأ أثناء حذف الطلب.", "error");
+    }
+  };
+
+  const handleSavePushoverSettings = async () => {
+    try {
+      setIsSavingPushover(true);
+      
+      // Fetch current row ID 0 settings
+      let currentSettings: any = {};
+      if (supabase) {
+        const { data: settingsRow } = await supabase
+          .from("products")
+          .select("description")
+          .eq("id", 0)
+          .single();
+        if (settingsRow && settingsRow.description) {
+          try {
+            currentSettings = JSON.parse(settingsRow.description);
+          } catch (e) {}
+        }
+      }
+
+      // Update Pushover values
+      const updatedSettings = {
+        ...currentSettings,
+        pushoverToken: pushoverToken.trim(),
+        pushoverUser: pushoverUser.trim()
+      };
+
+      // Call API to save settings
+      const res = await fetch("/api/admin/category-settings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedSettings),
+      });
+
+      if (res.ok) {
+        showToast("تم حفظ إعدادات إشعارات Pushover بنجاح!", "success");
+      } else {
+        throw new Error("Failed to save settings");
+      }
+    } catch (err) {
+      showToast("حدث خطأ أثناء حفظ إعدادات الإشعارات.", "error");
+    } finally {
+      setIsSavingPushover(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "orders") {
+      loadOrdersAndSettings();
+    }
+  }, [activeTab]);
+
   // ─ Auth gate effect
   useEffect(() => {
     const ok = sessionStorage.getItem("admin_authed");
     if (ok === "1") setIsAuthed(true);
     // Restore saved tab
     const saved = localStorage.getItem("admin_active_tab");
-    if (saved === "manage" || saved === "import" || saved === "careers" || saved === "categories") {
+    if (saved === "manage" || saved === "import" || saved === "careers" || saved === "categories" || saved === "orders") {
       setActiveTab(saved as any);
     }
   }, []);
@@ -1365,6 +1522,18 @@ export default function AdminPage() {
             <Layers size={14} />
             <span>إدارة صور الأقسام</span>
           </button>
+
+          <button
+            onClick={() => switchTab("orders")}
+            className={`py-4 border-b-2 font-black text-xs transition-all flex items-center gap-2 cursor-pointer bg-transparent outline-none ${
+              activeTab === "orders"
+                ? "border-brand-green text-brand-green"
+                : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <ShoppingBag size={14} />
+            <span>الطلبات الواردة ({orders.length})</span>
+          </button>
         </div>
       </div>
 
@@ -2078,6 +2247,295 @@ export default function AdminPage() {
                   <span>حفظ التعديلات</span>
                 )}
               </button>
+            </div>
+          </div>
+        ) : activeTab === "orders" ? (
+          /* Tab 5: Manage Orders */
+          <div className="flex flex-col gap-8 text-right animate-fade-in" dir="rtl">
+            
+            {/* ─────────── Pushover Settings Box ─────────── */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
+              <div className="border-b border-slate-100 pb-4">
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <Bell size={16} className="text-brand-green" />
+                  <span>إعدادات إشعارات المبيعات (Pushover)</span>
+                </h3>
+                <p className="text-slate-400 text-xs font-bold mt-1">
+                  اربط موقعك بتطبيق Pushover على هاتفك لتلقي إشعار صوتي فوري في نفس الثانية عند قيام أي زبون بالطلب.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-500">مفتاح التطبيق (Application API Token) *</label>
+                  <input
+                    type="text"
+                    placeholder="أدخل الـ Token الخاص بـ Pushover"
+                    value={pushoverToken}
+                    onChange={(e) => setPushoverToken(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200/80 rounded-xl py-2.5 px-4 text-xs font-bold text-slate-800 outline-none focus:border-brand-green focus:bg-white transition-all text-left font-en"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-500">مفتاح المستخدم الشخصي (User Key) *</label>
+                  <input
+                    type="text"
+                    placeholder="أدخل الـ User Key الخاص بك"
+                    value={pushoverUser}
+                    onChange={(e) => setPushoverUser(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200/80 rounded-xl py-2.5 px-4 text-xs font-bold text-slate-800 outline-none focus:border-brand-green focus:bg-white transition-all text-left font-en"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-2">
+                <button
+                  type="button"
+                  onClick={handleSavePushoverSettings}
+                  disabled={isSavingPushover}
+                  className="bg-[#2d7a1f] hover:bg-[#246118] disabled:opacity-50 text-white font-black text-xs px-8 py-3.5 rounded-xl border-0 cursor-pointer transition-all shadow-md shadow-[#2d7a1f]/10 flex items-center gap-2"
+                >
+                  {isSavingPushover ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>جاري حفظ الإعدادات...</span>
+                    </>
+                  ) : (
+                    <span>حفظ إعدادات الإشعارات</span>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* ─────────── Orders Filter & List ─────────── */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row gap-4 items-center justify-between border-b border-slate-100 pb-5">
+                <div className="flex flex-col gap-1">
+                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                    <ShoppingBag size={16} className="text-brand-green" />
+                    <span>الطلبات الواردة من العملاء</span>
+                  </h3>
+                  <p className="text-slate-400 text-xs font-bold">استعرض تفاصيل الشراء، تواصل مع العملاء على واتساب، وغير حالة الطلب.</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5 justify-end">
+                  {/* Status filter */}
+                  <div className="flex flex-col gap-1 text-right">
+                    <span className="text-[9px] font-black text-slate-400">تصفية حسب الحالة</span>
+                    <select
+                      value={ordersStatusFilter}
+                      onChange={(e) => setOrdersStatusFilter(e.target.value as any)}
+                      className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-black text-slate-700 outline-none cursor-pointer text-right appearance-none font-sans"
+                    >
+                      <option value="all">جميع الحالات</option>
+                      <option value="pending">قيد الانتظار</option>
+                      <option value="completed">تم التوصيل</option>
+                      <option value="cancelled">ملغي</option>
+                    </select>
+                  </div>
+
+                  {/* Search orders */}
+                  <div className="flex flex-col gap-1 text-right w-48 sm:w-60">
+                    <span className="text-[9px] font-black text-slate-400">ابحث باسم العميل أو رقم الهاتف أو الطلب</span>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="ابحث..."
+                        value={ordersSearch}
+                        onChange={(e) => setOrdersSearch(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-3 pr-8 text-[11px] font-bold text-slate-800 outline-none focus:border-brand-green text-right font-sans"
+                      />
+                      <Search size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {ordersLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400 text-xs font-bold">
+                  <Loader2 className="animate-spin text-brand-green" size={28} />
+                  <span>جاري تحميل الطلبات من السيرفر...</span>
+                </div>
+              ) : (() => {
+                const filteredOrders = orders.filter((o: any) => {
+                  const matchesSearch = 
+                    String(o.id).toLowerCase().includes(ordersSearch.toLowerCase()) ||
+                    String(o.customerName).toLowerCase().includes(ordersSearch.toLowerCase()) ||
+                    String(o.customerPhone).includes(ordersSearch);
+                  const matchesStatus = ordersStatusFilter === "all" || o.status === ordersStatusFilter;
+                  return matchesSearch && matchesStatus;
+                });
+
+                if (filteredOrders.length === 0) {
+                  return (
+                    <div className="text-center py-16 text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                      لا توجد طلبات مطابقة لمعايير البحث حالياً.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 gap-6">
+                    {filteredOrders.map((o: any) => {
+                      const orderDate = new Date(o.createdAt).toLocaleString("ar-JO", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                        hour12: true
+                      });
+
+                      const waMsg = encodeURIComponent(`مرحباً سيد ${o.customerName}، تواصل معك من مركز الجارحي بخصوص طلبك رقم ${o.id}.`);
+                      const waUrl = `https://wa.me/${o.customerPhone.replace(/[^0-9]/g, "")}?text=${waMsg}`;
+
+                      return (
+                        <div 
+                          key={o.id}
+                          className="border border-slate-200/80 rounded-2xl p-5 hover:border-slate-300 transition-all bg-slate-50/20 flex flex-col gap-4"
+                        >
+                          {/* Order Header */}
+                          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3">
+                            <div className="flex items-center gap-2.5">
+                              <span className="font-en font-black text-slate-900 text-sm">{o.id}</span>
+                              <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
+                                o.status === "completed" 
+                                  ? "bg-green-50 text-green-700 border border-green-200/60" 
+                                  : o.status === "cancelled"
+                                  ? "bg-red-50 text-red-700 border border-red-200/60"
+                                  : "bg-amber-50 text-amber-700 border border-amber-200/60"
+                              }`}>
+                                {o.status === "completed" ? "تم التوصيل" : o.status === "cancelled" ? "ملغي" : "قيد الانتظار"}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-black text-slate-400 font-en">{orderDate}</span>
+                          </div>
+
+                          {/* Customer Details & Items Summary */}
+                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                            {/* Customer Info */}
+                            <div className="lg:col-span-5 flex flex-col gap-2.5 bg-slate-50/70 p-4 rounded-xl text-xs font-bold text-slate-600">
+                              <div className="flex justify-between border-b border-slate-200/40 pb-1.5">
+                                <span className="text-slate-400">العميل:</span>
+                                <span className="text-slate-800 font-black">{o.customerName}</span>
+                              </div>
+                              <div className="flex justify-between border-b border-slate-200/40 pb-1.5">
+                                <span className="text-slate-400">رقم الهاتف:</span>
+                                <a 
+                                  href={waUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-brand-green font-black font-en flex items-center gap-1 hover:underline"
+                                >
+                                  <span>{o.customerPhone}</span>
+                                  <ExternalLink size={10} />
+                                </a>
+                              </div>
+                              <div className="flex justify-between border-b border-slate-200/40 pb-1.5">
+                                <span className="text-slate-400">المدينة:</span>
+                                <span className="text-slate-800 font-black">
+                                  {o.customerCity === "Amman" ? "عمان" : o.customerCity === "Zarqa" ? "الزرقاء" : o.customerCity === "Irbid" ? "إربد" : o.customerCity === "Salt" ? "السلط" : "باقي المحافظات"}
+                                </span>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-slate-400">العنوان بالتفصيل:</span>
+                                <span className="text-slate-800 font-black leading-relaxed">{o.customerAddress}</span>
+                              </div>
+                            </div>
+
+                            {/* Ordered items */}
+                            <div className="lg:col-span-7 flex flex-col gap-3">
+                              <span className="text-[10px] font-black text-slate-400 block">القطع المطلوبة:</span>
+                              <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-1">
+                                {o.cartItems.map((item: any, idx: number) => (
+                                  <div 
+                                    key={idx}
+                                    className="flex items-center justify-between gap-3 bg-white border border-slate-100 p-2.5 rounded-xl text-xs"
+                                  >
+                                    <div className="flex items-center gap-2.5">
+                                      <img 
+                                        src={item.image} 
+                                        alt={item.name} 
+                                        className="w-10 h-10 rounded-lg object-cover bg-slate-50 shrink-0 border border-slate-100"
+                                        onError={(e) => {
+                                          e.currentTarget.src = "/assets/images/placeholder-product.png";
+                                        }}
+                                      />
+                                      <div className="flex flex-col text-right">
+                                        <span className="font-black text-slate-800 text-xs leading-tight">{item.name}</span>
+                                        {item.brand && (
+                                          <span className="text-[9px] font-black text-slate-400 uppercase mt-0.5 font-en">
+                                            {item.brand} {item.model}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="text-left font-en shrink-0">
+                                      <span className="font-black text-slate-700">{item.quantity}</span>
+                                      <span className="text-slate-400 mx-1">×</span>
+                                      <span className="font-black text-brand-green">{item.price > 0 ? `${item.price} د.أ` : "طلب سعر"}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Invoice Footer & Actions */}
+                          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 bg-slate-50/50 p-4 rounded-xl border border-slate-150/40">
+                            {/* Totals */}
+                            <div className="flex items-center gap-4 text-xs font-bold text-slate-500">
+                              <div>المجموع الفرعي: <span className="font-en text-slate-850 font-black">{o.subtotal} د.أ</span></div>
+                              <div className="w-px h-3 bg-slate-300" />
+                              <div>التوصيل: <span className="font-en text-slate-850 font-black">{o.shippingFee === 0 ? "مجاني" : `${o.shippingFee} د.أ`}</span></div>
+                              <div className="w-px h-3 bg-slate-300" />
+                              <div className="text-slate-800 font-black">الإجمالي: <span className="font-en text-brand-green text-sm font-black">{o.total} د.أ</span></div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-2 justify-end">
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-[#2d7a1f] hover:bg-[#246118] text-white px-3 py-2 rounded-lg font-black text-[11px] transition-all flex items-center gap-1 hover:-translate-y-0.5 cursor-pointer no-underline"
+                              >
+                                <Phone size={12} />
+                                <span>تواصل واتساب</span>
+                              </a>
+
+                              {o.status !== "completed" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateOrderStatus(o.id, "completed")}
+                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-black text-[11px] transition-all cursor-pointer border-0"
+                                >
+                                  إكمال الطلب
+                                </button>
+                              )}
+
+                              {o.status !== "cancelled" && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateOrderStatus(o.id, "cancelled")}
+                                  className="bg-slate-500 hover:bg-slate-600 text-white px-3 py-2 rounded-lg font-black text-[11px] transition-all cursor-pointer border-0"
+                                >
+                                  إلغاء الطلب
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteOrder(o.id)}
+                                className="bg-red-50 hover:bg-red-100 hover:text-red-700 text-red-500 px-3 py-2 rounded-lg font-black text-[11px] transition-all cursor-pointer border border-red-100/50"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         ) : (

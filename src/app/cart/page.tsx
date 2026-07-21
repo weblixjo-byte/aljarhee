@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-
 import { useToast } from "../../context/ToastContext";
 import { 
   Trash2, 
@@ -13,7 +12,8 @@ import {
   PhoneCall, 
   MapPin, 
   User, 
-  ClipboardList 
+  ClipboardList,
+  CheckCircle
 } from "lucide-react";
 
 interface CartItem {
@@ -36,6 +36,7 @@ export default function CartPage() {
   const [customerCity, setCustomerCity] = useState("Amman");
   const [customerAddress, setCustomerAddress] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderSuccessId, setOrderSuccessId] = useState<string | null>(null);
 
   // Load cart from local storage
   const loadCart = () => {
@@ -57,8 +58,8 @@ export default function CartPage() {
   const updateQuantity = (id: number, delta: number) => {
     const updated = cartItems.map((item) => {
       if (item.id === id) {
-        const newQty = (item.quantity || 1) + delta;
-        return { ...item, quantity: Math.max(1, newQty) };
+        const q = (item.quantity || 1) + delta;
+        return { ...item, quantity: q > 0 ? q : 1 };
       }
       return item;
     });
@@ -73,18 +74,14 @@ export default function CartPage() {
     localStorage.setItem("aljarhee_cart", JSON.stringify(updated));
     setCartItems(updated);
     window.dispatchEvent(new Event("cartUpdated"));
-    showToast("تم إزالة القطعة من السلة.", "success");
   };
 
-  // Calculate totals
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
-  
-  // Free shipping above 20 JD
   const shippingFee = subtotal >= 20 ? 0 : 5;
   const total = subtotal + shippingFee;
 
-  // Handle WhatsApp checkout submission
-  const handleWhatsAppCheckout = (e: React.FormEvent) => {
+  // Handle direct dashboard checkout submission
+  const handleDashboardCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cartItems.length === 0) return;
 
@@ -96,72 +93,114 @@ export default function CartPage() {
     setIsSubmitting(true);
 
     try {
-      // Build order details message text
-      const storePhone = "962790007962";
-      let message = `*طلب جديد من متجر قطع الجارحي للسيارات*\n\n`;
-      message += `*معلومات المشتري:*\n`;
-      message += `• الاسم: ${customerName.trim()}\n`;
-      message += `• الهاتف: ${customerPhone.trim()}\n`;
-      message += `• المدينة: ${
-        customerCity === "Amman"
-          ? "عمان"
-          : customerCity === "Zarqa"
-          ? "الزرقاء"
-          : customerCity === "Irbid"
-          ? "إربد"
-          : customerCity === "Salt"
-          ? "السلط"
-          : "باقي المحافظات"
-      }\n`;
-      message += `• العنوان بالتفصيل: ${customerAddress.trim()}\n`;
-      message += `• طريقة الدفع: الدفع عند الاستلام (كاش)\n\n`;
-
-      const hasZeroPriceItems = cartItems.some(item => !item.price || item.price === 0);
-
-      message += `*القطع المطلوبة:*\n`;
-      cartItems.forEach((item, index) => {
-        message += `${index + 1}. *${item.name}* (الكمية: ${item.quantity})\n`;
-        message += `   السعر: ${item.price > 0 ? `${item.price} د.أ` : "طلب السعر (اتصل للاستفسار)"}\n`;
-        if (item.brand || item.model) {
-          message += `   التوافق: ${item.brand || ""} ${item.model || ""}\n`;
-        }
-        message += `\n`;
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          customerCity,
+          customerAddress: customerAddress.trim(),
+          cartItems,
+          subtotal,
+          shippingFee,
+          total,
+        }),
       });
 
-      message += `*تفاصيل الفاتورة:*\n`;
-      message += `• المجموع الفرعي: ${subtotal} د.أ\n`;
-      message += `• تكلفة التوصيل: ${shippingFee === 0 ? "مجاني" : `${shippingFee} د.أ`}\n`;
-      message += `• *المجموع الإجمالي: ${total} د.أ* ${hasZeroPriceItems ? "(+ قيمة القطع غير المسعرة)" : ""}\n\n`;
-      message += `يرجى تأكيد الطلب وتجهيز الشحن والدفع كاش عند الاستلام.`;
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to submit order");
+      }
 
-      // Encode URL for WhatsApp
-      const encodedMsg = encodeURIComponent(message);
-      const whatsappUrl = `https://wa.me/${storePhone}?text=${encodedMsg}`;
+      const result = await res.json();
 
-      // Open in new window
-      window.open(whatsappUrl, "_blank");
-
-      // Optional: Clear cart after checkout
+      // Clear local cart
       localStorage.setItem("aljarhee_cart", JSON.stringify([]));
       setCartItems([]);
       window.dispatchEvent(new Event("cartUpdated"));
 
-      showToast("تم إنشاء طلبك وفتح واتساب لإرساله!", "success");
-    } catch (err) {
-      showToast("حدث خطأ أثناء إعداد الطلب.", "error");
+      setOrderSuccessId(result.orderId);
+      showToast("تم إرسال طلبك بنجاح وسيتواصل معك الفني لتأكيد التوصيل!", "success");
+    } catch (err: any) {
+      showToast(err.message || "حدث خطأ أثناء إرسال الطلب، يرجى المحاولة لاحقاً.", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Render Success Screen
+  if (orderSuccessId) {
+    return (
+      <main className="flex-grow max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full mt-[100px] text-center" dir="rtl">
+        <div className="bg-white border border-slate-100 rounded-3xl p-8 sm:p-12 shadow-xl flex flex-col items-center gap-6">
+          <div className="w-20 h-20 bg-[#2d7a1f]/10 text-[#2d7a1f] rounded-full flex items-center justify-center animate-bounce">
+            <CheckCircle size={44} />
+          </div>
+          
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">تم إرسال الطلب بنجاح!</h1>
+            <p className="text-[#2d7a1f] font-black text-sm">رقم الطلب: {orderSuccessId}</p>
+          </div>
+
+          <p className="text-slate-500 text-xs sm:text-sm leading-relaxed max-w-md font-medium">
+            نشكرك على ثقتك بمركز الجارحي لقطع غيار السيارات. لقد استلمنا طلبك في نظام لوحة التحكم، وسيقوم فنيو المبيعات بالتواصل معك فوراً على الرقم <span className="font-en font-black text-slate-800">{customerPhone}</span> لتأكيد الشحن والتوصيل والدفع كاش عند الاستلام.
+          </p>
+
+          <div className="bg-slate-50 rounded-2xl p-5 w-full flex flex-col gap-2.5 text-right text-xs">
+            <h4 className="font-black text-slate-800 border-b border-slate-200/60 pb-2 mb-1 flex items-center gap-1.5">
+              <ClipboardList size={13} className="text-[#2d7a1f]" />
+              <span>تفاصيل التوصيل</span>
+            </h4>
+            <div className="flex justify-between text-slate-500 font-bold">
+              <span>اسم العميل:</span>
+              <span className="text-slate-800 font-black">{customerName}</span>
+            </div>
+            <div className="flex justify-between text-slate-500 font-bold">
+              <span>الهاتف:</span>
+              <span className="text-slate-800 font-black font-en">{customerPhone}</span>
+            </div>
+            <div className="flex justify-between text-slate-500 font-bold">
+              <span>العنوان:</span>
+              <span className="text-slate-800 font-black">
+                {customerCity === "Amman" ? "عمان" : customerCity === "Zarqa" ? "الزرقاء" : customerCity === "Irbid" ? "إربد" : customerCity === "Salt" ? "السلط" : "باقي المحافظات"} - {customerAddress}
+              </span>
+            </div>
+            <div className="flex justify-between text-slate-500 font-bold border-t border-slate-200/50 pt-2 mt-1">
+              <span>طريقة الدفع:</span>
+              <span className="text-[#2d7a1f] font-black">كاش عند الاستلام</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 w-full mt-2">
+            <Link 
+              href="/store"
+              className="flex-1 py-3 bg-[#2d7a1f] hover:bg-[#246118] text-white rounded-xl font-black text-xs transition-all shadow-md shadow-[#2d7a1f]/20 hover:-translate-y-0.5 text-center"
+            >
+              العودة للمتجر
+            </Link>
+            <Link 
+              href="/"
+              className="flex-1 py-3 border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-black text-xs transition-all text-center"
+            >
+              الصفحة الرئيسية
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <>
-      <main className="flex-grow max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full mt-[100px]">
+      <main className="flex-grow max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full mt-[100px]" dir="rtl">
         
         {/* Title */}
         <div className="text-right mb-10">
           <h1 className="text-3xl font-black text-slate-900 mb-2">سلة المشتريات</h1>
-          <p className="text-slate-500 text-xs font-bold">يرجى مراجعة القطع المطلوبة وتعبئة معلومات التوصيل لإكمال الطلب عبر الواتساب.</p>
+          <p className="text-slate-500 text-xs font-bold">يرجى مراجعة القطع المطلوبة وتعبئة معلومات التوصيل لإكمال الطلب مباشرة.</p>
         </div>
 
         {cartItems.length > 0 ? (
@@ -172,31 +211,31 @@ export default function CartPage() {
               {cartItems.map((item) => (
                 <div 
                   key={item.id}
-                  className="bg-white border border-slate-100 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-5 shadow-xs"
+                  className="bg-white border border-slate-100 rounded-3xl p-4 flex flex-col sm:flex-row gap-4 items-center justify-between shadow-xs hover:border-slate-200/80 transition-all duration-300"
                 >
                   <div className="flex items-center gap-4 w-full sm:w-auto">
-                    <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-100 p-2 flex items-center justify-center overflow-hidden shrink-0">
-                      <img 
-                        src={item.image} 
-                        alt={item.name} 
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          e.currentTarget.src = "/assets/images/placeholder-product.png";
-                        }}
-                      />
-                    </div>
-
-                    <div className="text-right">
-                      <h3 className="text-xs font-black text-slate-800 line-clamp-1 mb-1">{item.name}</h3>
-                      <span className="text-[0.65rem] font-bold text-slate-400 font-en uppercase">
-                        {item.brand || "جميع الموديلات"}
+                    <img 
+                      src={item.image} 
+                      alt={item.name} 
+                      className="w-16 h-16 rounded-2xl object-cover bg-slate-50 shrink-0"
+                      onError={(e) => {
+                        e.currentTarget.src = "/assets/images/placeholder-product.png";
+                      }}
+                    />
+                    <div className="text-right flex flex-col">
+                      {item.brand && (
+                        <span className="text-[0.62rem] text-slate-400 font-bold uppercase tracking-wider mb-0.5">
+                          {item.brand} {item.model}
+                        </span>
+                      )}
+                      <span className="text-xs font-black text-slate-800 leading-tight">
+                        {item.name}
                       </span>
                     </div>
                   </div>
 
-                  {/* Quantity & Actions */}
-                  <div className="flex items-center justify-between sm:justify-end gap-8 w-full sm:w-auto border-t sm:border-t-0 pt-4 sm:pt-0">
-                    {/* Unit Price */}
+                  <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto border-t border-slate-50 pt-3 sm:pt-0 sm:border-0">
+                    {/* Unit price */}
                     <div className="text-right">
                       <span className="text-[0.65rem] text-slate-400 font-bold block mb-0.5">السعر الفردي</span>
                       <span className="text-xs font-black text-slate-800 font-en">
@@ -253,7 +292,7 @@ export default function CartPage() {
             {/* Checkout Form & Order Summary */}
             <div className="lg:col-span-4 flex flex-col gap-6">
               <form 
-                onSubmit={handleWhatsAppCheckout}
+                onSubmit={handleDashboardCheckout}
                 className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col gap-5 text-right"
               >
                 <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
@@ -281,7 +320,7 @@ export default function CartPage() {
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[0.7rem] font-black text-slate-600 flex items-center gap-1.5">
                     <PhoneCall size={13} className="text-slate-400" />
-                    <span>رقم الهاتف (واتساب) *</span>
+                    <span>رقم الهاتف *</span>
                   </label>
                   <input
                     type="tel"
@@ -367,10 +406,11 @@ export default function CartPage() {
                   disabled={isSubmitting}
                   className="w-full py-4 bg-[#2d7a1f] hover:bg-[#246118] text-white rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-[#2d7a1f]/20 hover:-translate-y-0.5 mt-2 border-0"
                 >
-                  <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.966C16.59 1.977 14.113.953 11.488.95c-5.442 0-9.866 4.372-9.87 9.802 0 1.689.451 3.336 1.309 4.792L1.9 21.03l5.747-1.876zm10.957-7.466c-.29-.144-1.716-.836-1.978-.93-.262-.093-.453-.14-.645.144-.19.284-.738.93-.907 1.116-.168.187-.337.21-.628.067-.29-.144-1.226-.445-2.336-1.422-.864-.76-1.448-1.7-1.617-1.987-.169-.285-.018-.439.124-.581.127-.128.283-.327.425-.49.141-.164.19-.28.283-.467.094-.188.047-.352-.023-.497-.07-.145-.646-1.536-.885-2.1-.233-.559-.47-.482-.646-.492-.167-.008-.36-.01-.553-.01-.193 0-.507.07-.773.354-.266.285-1.013.978-1.013 2.383s1.028 2.766 1.17 2.953c.143.187 2.024 3.045 4.904 4.263.684.29 1.218.463 1.634.593.687.215 1.312.185 1.806.11.55-.083 1.716-.69 1.956-1.356.242-.665.242-1.235.17-1.356-.071-.122-.262-.215-.552-.36z" />
-                  </svg>
-                  <span>إرسال الطلب وتأكيد الشحن</span>
+                  {isSubmitting ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span>تأكيد الطلب والدفع عند الاستلام</span>
+                  )}
                 </button>
               </form>
             </div>
@@ -387,7 +427,7 @@ export default function CartPage() {
             </p>
             <Link 
               href="/store"
-              className="mt-2 bg-[#2d7a1f] hover:bg-[#246118] text-white px-8 py-3 rounded-xl font-black text-xs transition-all shadow-md shadow-[#2d7a1f]/20 hover:-translate-y-0.5"
+              className="mt-2 bg-[#2d7a1f] hover:bg-[#246118] text-white px-8 py-3 rounded-xl font-black text-xs transition-all shadow-md shadow-[#2d7a1f]/20 hover:-translate-y-0.5 text-center"
             >
               اذهب للتسوق من المتجر
             </Link>
