@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-
 import { useToast } from "../../context/ToastContext";
 import { 
   PhoneCall, 
@@ -16,6 +15,7 @@ import {
   User,
   CheckCircle2
 } from "lucide-react";
+import { supabase } from "../../lib/supabaseClient";
 
 export default function ContactClient() {
   const { showToast } = useToast();
@@ -28,6 +28,33 @@ export default function ContactClient() {
   const [chassisNumber, setChassisNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [sentViaEmail, setSentViaEmail] = useState(false);
+  const [web3formsKey, setWeb3formsKey] = useState("");
+
+  // Load Web3Forms Key from settings row (id: 0) on mount
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        if (supabase) {
+          const { data: settingsRow } = await supabase
+            .from("products")
+            .select("description")
+            .eq("id", 0)
+            .single();
+
+          if (settingsRow && settingsRow.description) {
+            const parsed = JSON.parse(settingsRow.description);
+            if (parsed.web3formsKey) {
+              setWeb3formsKey(parsed.web3formsKey.trim());
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to load settings in Contact page:", e);
+      }
+    }
+    loadSettings();
+  }, []);
 
   const contactCards = [
     {
@@ -56,8 +83,8 @@ export default function ContactClient() {
     }
   ];
 
-  // Submit handler: Formats message and opens WhatsApp for direct ordering
-  const handleSubmit = (e: React.FormEvent) => {
+  // Submit handler: Sends email via Web3Forms or falls back to WhatsApp
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim() || !message.trim()) {
       showToast("يرجى ملء جميع الحقول المطلوبة (الاسم، الهاتف، الاستفسار)", "error");
@@ -66,32 +93,90 @@ export default function ContactClient() {
 
     setIsSubmitting(true);
 
-    // Format WhatsApp message text
-    const waText = encodeURIComponent(
-      `*استفسار قطعة غيار - متجر الجارحي*\n\n` +
-      `👤 *الاسم:* ${name}\n` +
-      `📞 *الهاتف:* ${phone}\n` +
-      `🚗 *السيارة:* ${carDetails || "غير محدد"}\n` +
-      `🆔 *رقم الشاصي:* ${chassisNumber || "غير محدد"}\n\n` +
-      `💬 *الطلب/الاستفسار:*\n${message}`
-    );
+    try {
+      if (web3formsKey) {
+        // Send email using Web3Forms
+        const res = await fetch("https://api.web3forms.com/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            access_key: web3formsKey,
+            subject: `استفسار جديد من: ${name} (${phone})`,
+            from_name: "مركز الجارحي لقطع الغيار",
+            name: name,
+            phone: phone,
+            car_details: carDetails || "غير محدد",
+            chassis_number: chassisNumber || "غير محدد",
+            message: message
+          })
+        });
 
-    // Simulated short delay
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setIsSubmitted(true);
-      showToast("تم تجهيز طلبك بنجاح! سيتم تحويلك إلى واتساب للإرسال.", "success");
+        if (res.ok) {
+          setIsSubmitted(true);
+          setSentViaEmail(true);
+          showToast("تم إرسال استفسارك بنجاح وسيتواصل معك فني المبيعات!", "success");
+          
+          // Reset form
+          setName("");
+          setPhone("");
+          setCarDetails("");
+          setChassisNumber("");
+          setMessage("");
+        } else {
+          throw new Error("Failed to send via Web3Forms");
+        }
+      } else {
+        // Fallback: Send via WhatsApp
+        const waText = encodeURIComponent(
+          `*استفسار قطعة غيار - متجر الجارحي*\n\n` +
+          `👤 *الاسم:* ${name}\n` +
+          `📞 *الهاتف:* ${phone}\n` +
+          `🚗 *السيارة:* ${carDetails || "غير محدد"}\n` +
+          `🆔 *رقم الشاصي:* ${chassisNumber || "غير محدد"}\n\n` +
+          `💬 *الطلب/الاستفسار:*\n${message}`
+        );
+
+        setIsSubmitted(true);
+        setSentViaEmail(false);
+        showToast("سيتم تحويلك إلى واتساب لإرسال الاستفسار.", "success");
+        
+        // Redirect to WhatsApp
+        window.open(`https://wa.me/962789089842?text=${waText}`, "_blank");
+
+        // Reset form
+        setName("");
+        setPhone("");
+        setCarDetails("");
+        setChassisNumber("");
+        setMessage("");
+      }
+    } catch (err) {
+      console.warn("Web3Forms send failed, falling back to WhatsApp:", err);
+      // Fallback redirection to WhatsApp
+      const waText = encodeURIComponent(
+        `*استفسار قطعة غيار - متجر الجارحي*\n\n` +
+        `👤 *الاسم:* ${name}\n` +
+        `📞 *الهاتف:* ${phone}\n` +
+        `🚗 *السيارة:* ${carDetails || "غير محدد"}\n` +
+        `🆔 *رقم الشاصي:* ${chassisNumber || "غير محدد"}\n\n` +
+        `💬 *الطلب/الاستفسار:*\n${message}`
+      );
       
-      // Redirect to WhatsApp
+      setIsSubmitted(true);
+      setSentViaEmail(false);
       window.open(`https://wa.me/962789089842?text=${waText}`, "_blank");
       
-      // Reset form on submission
       setName("");
       setPhone("");
       setCarDetails("");
       setChassisNumber("");
       setMessage("");
-    }, 1200);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -189,9 +274,12 @@ export default function ContactClient() {
                   <div className="w-14 h-14 rounded-full bg-emerald-100 text-[#2d7a1f] flex items-center justify-center">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h4 className="text-base font-black text-slate-900">تم إرسال الطلب بنجاح!</h4>
+                  <h4 className="text-base font-black text-slate-900">تم إرسال طلبك بنجاح!</h4>
                   <p className="text-slate-600 text-xs leading-relaxed max-w-sm">
-                    تم تحويل استفسارك إلى الواتساب الخاص بالدعم الفني لمطابقته الفورية مع رقم الشاصي لسيارتك.
+                    {sentViaEmail 
+                      ? "تم إرسال استفسارك بنجاح إلى البريد الإلكتروني الخاص بالإدارة، وسيقوم ممثل خدمة العملاء بالرد عليك قريباً."
+                      : "تم تحويل استفسارك إلى الواتساب الخاص بالدعم الفني لمطابقته الفورية مع رقم الشاصي لسيارتك."
+                    }
                   </p>
                   <button
                     onClick={() => setIsSubmitted(false)}
@@ -287,8 +375,8 @@ export default function ContactClient() {
                     disabled={isSubmitting}
                     className="w-full bg-[#2d7a1f] hover:bg-[#246118] text-white py-4 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#2d7a1f]/10 hover:-translate-y-0.5 border-0 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed disabled:-translate-y-0"
                   >
-                    <MessageCircle size={16} />
-                    <span>{isSubmitting ? "جاري التجهيز..." : "إرسال الاستفسار عبر واتساب"}</span>
+                    <Mail size={16} />
+                    <span>{isSubmitting ? "جاري الإرسال..." : (web3formsKey ? "إرسال الاستفسار بالبريد الإلكتروني" : "إرسال الاستفسار عبر واتساب")}</span>
                   </button>
                 </form>
               )}

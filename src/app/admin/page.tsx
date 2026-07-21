@@ -321,6 +321,7 @@ export default function AdminPage() {
   const [pushoverToken, setPushoverToken] = useState("");
   const [pushoverUser, setPushoverUser] = useState("");
   const [isSavingPushover, setIsSavingPushover] = useState(false);
+  const [web3formsKey, setWeb3formsKey] = useState("");
 
   // Load orders and pushover settings from database
   const loadOrdersAndSettings = async () => {
@@ -347,6 +348,7 @@ export default function AdminPage() {
             const parsed = JSON.parse(settingsRow.description);
             setPushoverToken(parsed.pushoverToken || "");
             setPushoverUser(parsed.pushoverUser || "");
+            setWeb3formsKey(parsed.web3formsKey || "");
           } catch (e) {}
         }
       }
@@ -430,11 +432,12 @@ export default function AdminPage() {
         }
       }
 
-      // Update Pushover values
+      // Update Pushover and Web3Forms values
       const updatedSettings = {
         ...currentSettings,
         pushoverToken: pushoverToken.trim(),
-        pushoverUser: pushoverUser.trim()
+        pushoverUser: pushoverUser.trim(),
+        web3formsKey: web3formsKey.trim()
       };
 
       // Call API to save settings
@@ -447,7 +450,7 @@ export default function AdminPage() {
       });
 
       if (res.ok) {
-        showToast("تم حفظ إعدادات إشعارات Pushover بنجاح!", "success");
+        showToast("تم حفظ جميع إعدادات الاتصال والإشعارات بنجاح!", "success");
       } else {
         throw new Error("Failed to save settings");
       }
@@ -2253,38 +2256,60 @@ export default function AdminPage() {
           /* Tab 5: Manage Orders */
           <div className="flex flex-col gap-8 text-right animate-fade-in" dir="rtl">
             
-            {/* ─────────── Pushover Settings Box ─────────── */}
+            {/* ─────────── Pushover & Web3Forms Settings Box ─────────── */}
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
               <div className="border-b border-slate-100 pb-4">
                 <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                   <Bell size={16} className="text-brand-green" />
-                  <span>إعدادات إشعارات المبيعات (Pushover)</span>
+                  <span>إعدادات الإشعارات والبريد الإلكتروني (Pushover & Web3Forms)</span>
                 </h3>
                 <p className="text-slate-400 text-xs font-bold mt-1">
-                  اربط موقعك بتطبيق Pushover على هاتفك لتلقي إشعار صوتي فوري في نفس الثانية عند قيام أي زبون بالطلب.
+                  اربط موقعك بتطبيق Pushover لتلقي إشعار صوتي فوري عند الطلب، وبخدمة Web3Forms لتلقي رسائل صفحة "تواصل معنا" كإيميلات مباشرة.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-black text-slate-500">مفتاح التطبيق (Application API Token) *</label>
-                  <input
-                    type="text"
-                    placeholder="أدخل الـ Token الخاص بـ Pushover"
-                    value={pushoverToken}
-                    onChange={(e) => setPushoverToken(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200/80 rounded-xl py-2.5 px-4 text-xs font-bold text-slate-800 outline-none focus:border-brand-green focus:bg-white transition-all text-left font-en"
-                  />
+              {/* Pushover settings */}
+              <div className="flex flex-col gap-3">
+                <h4 className="text-xs font-black text-slate-800">إعدادات إشعارات الطلبات (Pushover)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black text-slate-500">مفتاح التطبيق (Application API Token)</label>
+                    <input
+                      type="text"
+                      placeholder="أدخل الـ Token الخاص بـ Pushover"
+                      value={pushoverToken}
+                      onChange={(e) => setPushoverToken(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200/80 rounded-xl py-2.5 px-4 text-xs font-bold text-slate-800 outline-none focus:border-brand-green focus:bg-white transition-all text-left font-en"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-black text-slate-500">مفتاح المستخدم الشخصي (User Key)</label>
+                    <input
+                      type="text"
+                      placeholder="أدخل الـ User Key الخاص بك"
+                      value={pushoverUser}
+                      onChange={(e) => setPushoverUser(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200/80 rounded-xl py-2.5 px-4 text-xs font-bold text-slate-800 outline-none focus:border-brand-green focus:bg-white transition-all text-left font-en"
+                    />
+                  </div>
                 </div>
+              </div>
+
+              {/* Web3Forms settings */}
+              <div className="flex flex-col gap-3 border-t border-slate-100 pt-5">
+                <h4 className="text-xs font-black text-slate-800">إعدادات رسائل البريد الإلكتروني لصفحة "تواصل معنا" (Web3Forms)</h4>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-black text-slate-500">مفتاح المستخدم الشخصي (User Key) *</label>
+                  <label className="text-[10px] font-black text-slate-500">مفتاح الوصول الخاص بـ Web3Forms (Access Key)</label>
                   <input
                     type="text"
-                    placeholder="أدخل الـ User Key الخاص بك"
-                    value={pushoverUser}
-                    onChange={(e) => setPushoverUser(e.target.value)}
+                    placeholder="أدخل الـ Access Key الخاص بـ Web3Forms"
+                    value={web3formsKey}
+                    onChange={(e) => setWeb3formsKey(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200/80 rounded-xl py-2.5 px-4 text-xs font-bold text-slate-800 outline-none focus:border-brand-green focus:bg-white transition-all text-left font-en"
                   />
+                  <span className="text-[10px] text-slate-400 font-bold">
+                    يمكنك الحصول على مفتاح مجاني فوراً من <a href="https://web3forms.com" target="_blank" rel="noopener noreferrer" className="text-brand-green hover:underline">web3forms.com</a> وسيصلك إلى إيميلك الشخصي مباشرة لتفعيل استقبال الرسائل.
+                  </span>
                 </div>
               </div>
 
@@ -2301,7 +2326,7 @@ export default function AdminPage() {
                       <span>جاري حفظ الإعدادات...</span>
                     </>
                   ) : (
-                    <span>حفظ إعدادات الإشعارات</span>
+                    <span>حفظ جميع إعدادات الاتصال</span>
                   )}
                 </button>
               </div>
