@@ -92,7 +92,7 @@ const CATEGORIES = [
 ];
 
 function StoreContent() {
-  const { products } = useProducts();
+  const { products, categorySettings } = useProducts();
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -260,6 +260,32 @@ function StoreContent() {
 
   const modelYearCombos = getDynamicModelYearCombos();
 
+  // Get active categories dynamically for the selected vehicle model/year
+  const getDynamicCategories = () => {
+    if (!selectedBrand || !selectedModel || !selectedYear) return [];
+    
+    // Filter products matching this vehicle
+    const vehicleProducts = products.filter(
+      p => p.brand && p.brand.toLowerCase() === selectedBrand.toLowerCase() &&
+           p.model && p.model.toLowerCase() === selectedModel.toLowerCase() &&
+           p.year && String(p.year).toLowerCase() === String(selectedYear).toLowerCase()
+    );
+
+    // Get unique categories found in these products
+    const uniqueCats = Array.from(
+      new Set(vehicleProducts.map(p => p.categoryName || p.category).filter(Boolean))
+    );
+
+    if (uniqueCats.length === 0) {
+      // Fallback to defaults if no products or categories found
+      return ["قطع بودي", "قطع كهرباء", "قطع ميكانيك"];
+    }
+
+    return uniqueCats;
+  };
+
+  const dynamicVehicleCategories = getDynamicCategories();
+
   // Filter products matching current wizard selections
   const getFilteredProducts = () => {
     return products.filter(product => {
@@ -281,7 +307,7 @@ function StoreContent() {
       // 4. Category match
       const matchesCategory = !selectedCategory || selectedCategory === "all"
         ? true
-        : (product.category === selectedCategory);
+        : (product.category === selectedCategory || product.categoryName === selectedCategory);
 
       // 5. Search query match (broad title match)
       const matchesSearch = !searchQuery.trim()
@@ -521,17 +547,41 @@ function StoreContent() {
               اختر قسم قطع الغيار المطلوب
             </h2>
 
-            {/* Exactly 3 full-width green category button bars matching mockup */}
-            <div className="flex flex-col gap-4 max-w-xl mx-auto mb-6">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.key}
-                  onClick={() => handleCategorySelect(cat.key)}
-                  className="w-full bg-[#2d7a1f] hover:bg-[#246118] text-white py-4.5 rounded-xl font-black text-sm tracking-wide transition-all shadow-md shadow-[#2d7a1f]/10 cursor-pointer border-0 flex items-center justify-center gap-2 hover:-translate-y-0.5 active:translate-y-0"
-                >
-                  <span>{cat.label}</span>
-                </button>
-              ))}
+            {/* Redesigned Premium Dynamic Category Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto mb-6" dir="rtl">
+              {dynamicVehicleCategories.map((catName) => {
+                const imageUrl = categorySettings[catName] || "/assets/images/placeholder-product.png";
+                return (
+                  <button
+                    key={catName}
+                    onClick={() => handleCategorySelect(catName)}
+                    className="group bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-[#2d7a1f] rounded-3xl overflow-hidden p-4 flex flex-col items-center justify-between gap-4 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_12px_40px_rgba(45,122,31,0.12)] hover:-translate-y-1.5 text-right w-full min-h-[200px]"
+                  >
+                    {/* Category Image container */}
+                    <div className="relative w-full aspect-[4/3] rounded-2xl bg-slate-50 overflow-hidden flex items-center justify-center">
+                      <img
+                        src={imageUrl}
+                        alt={catName}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          e.currentTarget.src = "/assets/images/placeholder-product.png";
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    </div>
+                    
+                    {/* Category Label */}
+                    <div className="w-full flex items-center justify-between mt-2 border-t border-slate-50 pt-3">
+                      <span className="text-xs font-black text-slate-800 group-hover:text-[#2d7a1f] transition-colors pr-1">
+                        {catName}
+                      </span>
+                      <span className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-[#2d7a1f]/10 text-slate-400 group-hover:text-[#2d7a1f] flex items-center justify-center transition-all">
+                        ←
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}

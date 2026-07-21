@@ -130,7 +130,7 @@ export default function AdminPage() {
   const [passInput, setPassInput] = useState("");
   const [passError, setPassError] = useState(false);
 
-  const { products, importProducts, resetProducts } = useProducts();
+  const { products, categorySettings, saveCategorySettings, importProducts, resetProducts } = useProducts();
   const { showToast } = useToast();
   const [dragActive, setDragActive] = useState(false);
   const [parsedData, setParsedData] = useState<any[]>([]);
@@ -141,16 +141,42 @@ export default function AdminPage() {
     withDiscount: 0,
   });
 
-  const [activeTab, setActiveTab] = useState<"import" | "manage" | "careers">("import");
+  const [activeTab, setActiveTab] = useState<"import" | "manage" | "careers" | "categories">("import");
 
-  const switchTab = (tab: "import" | "manage" | "careers") => {
+  const switchTab = (tab: "import" | "manage" | "careers" | "categories") => {
     setActiveTab(tab);
     if (typeof window !== "undefined") {
       localStorage.setItem("admin_active_tab", tab);
     }
   };
 
-  // Careers / Jobs Management States
+  // Category Settings States
+  const [tempCategoryImages, setTempCategoryImages] = useState<Record<string, string>>({});
+  const [isSavingCategoryImages, setIsSavingCategoryImages] = useState(false);
+
+  const handleCategoryImgChange = (catName: string, val: string) => {
+    setTempCategoryImages(prev => ({
+      ...prev,
+      [catName]: val
+    }));
+  };
+
+  const handleSaveCategoryImages = async () => {
+    setIsSavingCategoryImages(true);
+    const finalSettings = {
+      ...categorySettings,
+      ...tempCategoryImages
+    };
+    const success = await saveCategorySettings(finalSettings);
+    setIsSavingCategoryImages(false);
+    if (success) {
+      showToast("تم حفظ صور الأقسام بنجاح ومزامنتها مع المتجر!", "success");
+    } else {
+      showToast("حدث خطأ أثناء حفظ التعديلات. يرجى التحقق من الشبكة.", "error");
+    }
+  };
+
+    // Careers / Jobs Management States
   const [careersList, setCareersList] = useState<any[]>([]);
   const [careersLoading, setCareersLoading] = useState(false);
   const [newJobTitle, setNewJobTitle] = useState("");
@@ -172,7 +198,7 @@ export default function AdminPage() {
     if (ok === "1") setIsAuthed(true);
     // Restore saved tab
     const saved = localStorage.getItem("admin_active_tab");
-    if (saved === "manage" || saved === "import" || saved === "careers") {
+    if (saved === "manage" || saved === "import" || saved === "careers" || saved === "categories") {
       setActiveTab(saved as any);
     }
   }, []);
@@ -1138,6 +1164,18 @@ export default function AdminPage() {
             <Briefcase size={14} />
             <span>إعلانات الوظائف</span>
           </button>
+
+          <button
+            onClick={() => switchTab("categories")}
+            className={`py-4 border-b-2 font-black text-xs transition-all flex items-center gap-2 cursor-pointer bg-transparent outline-none ${
+              activeTab === "categories"
+                ? "border-brand-green text-brand-green"
+                : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            <Layers size={14} />
+            <span>إدارة صور الأقسام</span>
+          </button>
         </div>
       </div>
 
@@ -1563,6 +1601,87 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
+          </div>
+        ) : activeTab === "categories" ? (
+          /* Tab 4: Manage Category Images settings */
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col gap-6" dir="rtl">
+            <div className="border-b border-slate-100 pb-5">
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Layers size={16} className="text-brand-green" />
+                <span>إدارة صور الأقسام</span>
+              </h3>
+              <p className="text-slate-400 text-xs font-bold mt-1">تحديد صور الخلفية للأقسام المكتشفة في الإكسيل لعرضها ببطاقات جميلة في صفحة المتجر</p>
+            </div>
+
+            {/* List of categories */}
+            {(() => {
+              // Get unique categories found in products
+              const uniqueCategories = Array.from(
+                new Set(products.map(p => p.categoryName || p.category).filter(Boolean))
+              );
+
+              if (uniqueCategories.length === 0) {
+                return (
+                  <div className="text-center py-12 text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    لا توجد أقسام مسجلة بالموقع حالياً. يرجى رفع وتحديث ملف الإكسيل أولاً لتظهر الأقسام هنا.
+                  </div>
+                );
+              }
+
+              return (
+                <div className="flex flex-col gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {uniqueCategories.map((catName) => {
+                      const currentVal = tempCategoryImages[catName] !== undefined ? tempCategoryImages[catName] : (categorySettings[catName] || "");
+                      return (
+                        <div key={catName} className="flex flex-col gap-2 p-5 border border-slate-100 rounded-2xl bg-slate-50/50 hover:bg-slate-50 transition-all text-right">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-slate-800">{catName}</span>
+                            {currentVal && (
+                              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف بالصورة</span>
+                            )}
+                          </div>
+                          <div className="flex gap-2 mt-1">
+                            <input
+                              type="text"
+                              value={currentVal}
+                              onChange={(e) => handleCategoryImgChange(catName, e.target.value)}
+                              placeholder="أدخل رابط صورة القسم (مثال: https://...)"
+                              className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 focus:border-brand-green focus:outline-none text-xs font-en"
+                            />
+                            {/* Preview box */}
+                            <div className="w-11 h-11 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                              {currentVal ? (
+                                <img src={currentVal} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/assets/images/placeholder-product.png"; }} />
+                              ) : (
+                                <Layers size={14} className="text-slate-400" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex justify-end gap-3 mt-4 border-t border-slate-100 pt-5">
+                    <button
+                      onClick={handleSaveCategoryImages}
+                      disabled={isSavingCategoryImages}
+                      className="bg-[#2d7a1f] hover:bg-[#246118] disabled:opacity-50 text-white font-black text-xs px-8 py-3.5 rounded-xl border-0 cursor-pointer transition-all shadow-md shadow-[#2d7a1f]/10 flex items-center gap-2"
+                    >
+                      {isSavingCategoryImages ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          <span>جاري الحفظ...</span>
+                        </>
+                      ) : (
+                        <span>حفظ صور الأقسام</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         ) : (
           /* Tab 2: Manage Products Catalog */
