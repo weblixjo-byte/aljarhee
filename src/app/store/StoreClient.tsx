@@ -21,9 +21,12 @@ import {
   X,
   ShoppingBag,
   MessageCircle,
+  Settings,
+  Layers,
+  Sparkle
 } from "lucide-react";
 
-// List of available brands with premium vector SVGs
+// List of available brands with premium vector SVGs as defaults
 const BRANDS = [
   {
     key: "toyota",
@@ -84,15 +87,14 @@ const BRANDS = [
   }
 ];
 
-// Available categories matching the green selector bars in the user mockup
-const CATEGORIES = [
+const STATIC_CATEGORIES = [
   { key: "body", label: "قطع بودي" },
   { key: "electrical", label: "قطع كهرباء" },
   { key: "mechanical", label: "قطع ميكانيك" },
 ];
 
 function StoreContent() {
-  const { products, categorySettings } = useProducts();
+  const { products, categorySettings, brandSettings, modelSettings } = useProducts();
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -110,174 +112,94 @@ function StoreContent() {
     const brandParam = searchParams.get("brand");
     const modelParam = searchParams.get("model");
     const yearParam = searchParams.get("year");
-    const catParam = searchParams.get("category");
-    const qParam = searchParams.get("q");
+    const categoryParam = searchParams.get("category");
+    const queryParam = searchParams.get("query");
 
-    if (brandParam) {
-      setSelectedBrand(brandParam);
-    }
-    if (modelParam) setSelectedModel(decodeURIComponent(modelParam));
-    if (yearParam) setSelectedYear(decodeURIComponent(yearParam));
-    if (catParam && CATEGORIES.some(c => c.key === catParam)) {
-      setSelectedCategory(catParam);
-    }
-    if (qParam) setSearchQuery(decodeURIComponent(qParam));
+    if (brandParam) setSelectedBrand(brandParam);
+    if (modelParam) setSelectedModel(modelParam);
+    if (yearParam) setSelectedYear(yearParam);
+    if (categoryParam) setSelectedCategory(categoryParam);
+    if (queryParam) setSearchQuery(queryParam);
   }, [searchParams]);
 
-  // Reset page pagination on filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedBrand, selectedModel, selectedYear, selectedCategory, searchQuery]);
-
-  // Handle resetting the wizard
-  const resetAll = () => {
-    setSelectedBrand(null);
-    setSelectedModel(null);
-    setSelectedYear(null);
-    setSelectedCategory(null);
-    setSearchQuery("");
-    router.push("/store");
-  };
-
-  const handleBrandSelect = (brandKey: string) => {
-    setSelectedBrand(brandKey);
-    setSelectedModel(null);
-    setSelectedYear(null);
-    setSelectedCategory(null);
-    router.push(`/store?brand=${brandKey}`);
-  };
-
-  const handleModelYearSelect = (model: string, year: string) => {
-    setSelectedModel(model);
-    setSelectedYear(year);
-    setSelectedCategory(null);
-    router.push(`/store?brand=${selectedBrand}&model=${encodeURIComponent(model)}&year=${encodeURIComponent(year)}`);
-  };
-
-  const handleCategorySelect = (catKey: string) => {
-    setSelectedCategory(catKey);
-    router.push(`/store?brand=${selectedBrand}&model=${encodeURIComponent(selectedModel || "")}&year=${encodeURIComponent(selectedYear || "")}&category=${catKey}`);
-  };
-
-  // Add product to Cart context
-  const handleAddToCart = (product: Product, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    try {
-      const cart = JSON.parse(localStorage.getItem("aljarhee_cart") || "[]");
-      const existing = cart.find((item: any) => item.id === product.id);
-      
-      if (existing) {
-        existing.quantity = (existing.quantity || 1) + 1;
-      } else {
-        cart.push({ ...product, quantity: 1 });
-      }
-      
-      localStorage.setItem("aljarhee_cart", JSON.stringify(cart));
-      window.dispatchEvent(new Event("cartUpdated"));
-      
-      showToast(`تم إضافة "${product.name}" إلى السلة بنجاح!`, "success");
-    } catch (err) {
-      showToast("عذراً، حدث خطأ أثناء إضافة المنتج للمشتريات.", "error");
-    }
-  };
-
-  // Get active brands dynamically from the database (Strict Matching)
-  const getDynamicBrands = () => {
-    if (products.length === 0) return [];
-
-    // Get unique brand values from products
-    const uniqueBrands = Array.from(
-      new Set(products.map(p => (p.brand || "").trim()))
-    ).filter(b => b !== "");
-
-    // Build list
-    const list: typeof BRANDS = [];
-
-    // First, add any of the 5 main brands if they exist in the products
-    BRANDS.forEach(mainBrand => {
-      const hasProducts = uniqueBrands.some(
-        b => b.toLowerCase() === mainBrand.key.toLowerCase() || b === mainBrand.name
-      );
-      if (hasProducts) {
-        list.push(mainBrand);
-      }
-    });
-
-    // Second, add any other custom brands or typos
-    uniqueBrands.forEach(rawBrand => {
-      const isMain = BRANDS.some(
-        mb => mb.key.toLowerCase() === rawBrand.toLowerCase() || mb.name === rawBrand
-      );
-      if (!isMain) {
-        list.push({
-          key: rawBrand.toLowerCase(),
-          name: rawBrand,
-          logo: (
-            <div className="w-12 h-12 bg-slate-100 text-[#2d7a1f] rounded-2xl flex items-center justify-center font-bold text-base uppercase shrink-0">
-              {rawBrand.slice(0, 2)}
-            </div>
-          )
-        });
-      }
-    });
-
-    return list;
-  };
-
-  const dynamicBrands = getDynamicBrands();
-
-  // Extract unique model + year combinations from active products dynamically
-  const getDynamicModelYearCombos = () => {
-    if (!selectedBrand) return [];
-    
-    // Filter database products matching this brand
-    const brandProducts = products.filter(
-      p => p.brand && p.brand.toLowerCase() === selectedBrand.toLowerCase()
+  // Dynamic Brands mapping based on imported products
+  const getDynamicBrandsList = () => {
+    const uniqueBrandNames = Array.from(
+      new Set(products.map((p) => p.brand).filter(Boolean))
     );
 
-    // Group by unique combinations of model and year values
-    const uniqueCombosMap: Record<string, { model: string; year: string }> = {};
-    brandProducts.forEach(p => {
-      const modelStr = (p.model || "").trim();
-      const yearStr = (p.year || "").trim();
-      if (modelStr && yearStr) {
-        const key = `${modelStr}_${yearStr}`;
-        uniqueCombosMap[key] = { model: modelStr, year: yearStr };
+    if (uniqueBrandNames.length === 0) {
+      return BRANDS;
+    }
+
+    return uniqueBrandNames.map((bName) => {
+      const key = bName.toLowerCase();
+      const imageUrl = brandSettings[key] || "";
+      const staticBrand = BRANDS.find((sb) => sb.key === key);
+
+      const logo = imageUrl ? (
+        <img src={imageUrl} alt={bName} className="h-14 w-auto object-contain transition-transform group-hover:scale-105 duration-300" />
+      ) : staticBrand ? (
+        staticBrand.logo
+      ) : (
+        <span className="text-sm font-black text-slate-800 uppercase font-en">{bName}</span>
+      );
+
+      return {
+        key,
+        name: bName,
+        logo,
+      };
+    });
+  };
+
+  const dynamicBrands = getDynamicBrandsList();
+
+  // Dynamic Models and Years mapping based on selected brand
+  const getDynamicModelYearCombos = () => {
+    if (!selectedBrand) return [];
+
+    const brandProducts = products.filter(
+      (p) => p.brand && p.brand.toLowerCase() === selectedBrand.toLowerCase()
+    );
+
+    const combos: { model: string; year: string }[] = [];
+    const seen = new Set<string>();
+
+    brandProducts.forEach((p) => {
+      if (p.model && p.year) {
+        const key = `${p.model.trim().toLowerCase()}_${p.year.trim().toLowerCase()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          combos.push({
+            model: p.model.trim(),
+            year: p.year.trim(),
+          });
+        }
       }
     });
 
-    // Convert map to list and sort
-    const list = Object.values(uniqueCombosMap);
-    list.sort((a, b) => {
-      const modelCompare = a.model.localeCompare(b.model, "ar");
-      if (modelCompare !== 0) return modelCompare;
-      return b.year.localeCompare(a.year); // Latest years first
-    });
-
-    return list;
+    return combos.sort((a, b) => a.model.localeCompare(b.model));
   };
 
   const modelYearCombos = getDynamicModelYearCombos();
 
-  // Get active categories dynamically for the selected vehicle model/year
+  // Dynamic categories matching the vehicle
   const getDynamicCategories = () => {
     if (!selectedBrand || !selectedModel || !selectedYear) return [];
-    
-    // Filter products matching this vehicle
+
     const vehicleProducts = products.filter(
-      p => p.brand && p.brand.toLowerCase() === selectedBrand.toLowerCase() &&
-           p.model && p.model.toLowerCase() === selectedModel.toLowerCase() &&
-           p.year && String(p.year).toLowerCase() === String(selectedYear).toLowerCase()
+      (p) =>
+        p.brand && p.brand.toLowerCase() === selectedBrand.toLowerCase() &&
+        p.model && p.model.toLowerCase() === selectedModel.toLowerCase() &&
+        p.year && String(p.year).toLowerCase() === String(selectedYear).toLowerCase()
     );
 
-    // Get unique categories found in these products
     const uniqueCats = Array.from(
-      new Set(vehicleProducts.map(p => p.categoryName || p.category).filter(Boolean))
+      new Set(vehicleProducts.map((p) => p.categoryName || p.category).filter(Boolean))
     );
 
     if (uniqueCats.length === 0) {
-      // Fallback to defaults if no products or categories found
       return ["قطع بودي", "قطع كهرباء", "قطع ميكانيك"];
     }
 
@@ -286,37 +208,95 @@ function StoreContent() {
 
   const dynamicVehicleCategories = getDynamicCategories();
 
-  // Filter products matching current wizard selections
+  // Selection handlers
+  const handleBrandSelect = (brandKey: string) => {
+    setSelectedBrand(brandKey);
+    setSelectedModel(null);
+    setSelectedYear(null);
+    setSelectedCategory(null);
+    setCurrentPage(1);
+    router.push(`/store?brand=${brandKey}`);
+  };
+
+  const handleModelYearSelect = (model: string, year: string) => {
+    setSelectedModel(model);
+    setSelectedYear(year);
+    setSelectedCategory(null);
+    setCurrentPage(1);
+    router.push(`/store?brand=${selectedBrand}&model=${encodeURIComponent(model)}&year=${encodeURIComponent(year)}`);
+  };
+
+  const handleCategorySelect = (catKey: string) => {
+    setSelectedCategory(catKey);
+    setCurrentPage(1);
+    router.push(
+      `/store?brand=${selectedBrand}&model=${encodeURIComponent(
+        selectedModel || ""
+      )}&year=${encodeURIComponent(selectedYear || "")}&category=${encodeURIComponent(catKey)}`
+    );
+  };
+
+  const resetAll = () => {
+    setSelectedBrand(null);
+    setSelectedModel(null);
+    setSelectedYear(null);
+    setSelectedCategory(null);
+    setSearchQuery("");
+    setCurrentPage(1);
+    router.push("/store");
+  };
+
+  // Add to cart helper
+  const handleAddToCart = (product: Product, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const cart = JSON.parse(localStorage.getItem("aljarhee_cart") || "[]");
+      const existing = cart.find((item: any) => item.id === product.id);
+
+      if (existing) {
+        existing.quantity = (existing.quantity || 1) + 1;
+      } else {
+        cart.push({ ...product, quantity: 1 });
+      }
+
+      localStorage.setItem("aljarhee_cart", JSON.stringify(cart));
+      window.dispatchEvent(new Event("cartUpdated"));
+      showToast(`تم إضافة "${product.name}" إلى السلة بنجاح!`, "success");
+    } catch (err) {
+      showToast("عذراً، حدث خطأ أثناء إضافة المنتج.", "error");
+    }
+  };
+
+  // Filter products matching selections
   const getFilteredProducts = () => {
-    return products.filter(product => {
-      // 1. Brand match
-      const matchesBrand = !selectedBrand || selectedBrand === "all"
-        ? true 
-        : (product.brand && product.brand.toLowerCase() === selectedBrand.toLowerCase());
+    return products.filter((product) => {
+      const matchesBrand =
+        !selectedBrand || selectedBrand === "all"
+          ? true
+          : product.brand && product.brand.toLowerCase() === selectedBrand.toLowerCase();
 
-      // 2. Model match
-      const matchesModel = !selectedModel || selectedModel === "all"
-        ? true
-        : (product.model && product.model.toLowerCase() === selectedModel.toLowerCase());
+      const matchesModel =
+        !selectedModel || selectedModel === "all"
+          ? true
+          : product.model && product.model.toLowerCase() === selectedModel.toLowerCase();
 
-      // 3. Year match
-      const matchesYear = !selectedYear || selectedYear === "all"
-        ? true
-        : (product.year && String(product.year).toLowerCase() === String(selectedYear).toLowerCase());
+      const matchesYear =
+        !selectedYear || selectedYear === "all"
+          ? true
+          : product.year && String(product.year).toLowerCase() === String(selectedYear).toLowerCase();
 
-      // 4. Category match
-      const matchesCategory = !selectedCategory || selectedCategory === "all"
-        ? true
-        : (product.category === selectedCategory || product.categoryName === selectedCategory);
+      const matchesCategory =
+        !selectedCategory || selectedCategory === "all"
+          ? true
+          : product.category === selectedCategory || product.categoryName === selectedCategory;
 
-      // 5. Search query match (broad title match)
-      const matchesSearch = !searchQuery.trim()
-        ? true
-        : (
-            product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      const matchesSearch =
+        !searchQuery.trim()
+          ? true
+          : product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             product.id.toString().includes(searchQuery) ||
-            (product.model && product.model.toLowerCase().includes(searchQuery.toLowerCase()))
-          );
+            (product.model && product.model.toLowerCase().includes(searchQuery.toLowerCase()));
 
       return matchesBrand && matchesModel && matchesYear && matchesCategory && matchesSearch;
     });
@@ -324,8 +304,8 @@ function StoreContent() {
 
   const filteredProducts = getFilteredProducts();
 
-  // Pagination calculations
-  const itemsPerPage = 9;
+  // Pagination parameters
+  const itemsPerPage = 12;
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const paginatedProducts = filteredProducts.slice(
     (currentPage - 1) * itemsPerPage,
@@ -334,46 +314,53 @@ function StoreContent() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    window.scrollTo({ top: 300, behavior: "smooth" });
+    window.scrollTo({ top: 350, behavior: "smooth" });
   };
 
-  // Determine current step index
-  // If search query is typed, we bypass the wizard and display results immediately!
   const isSearchActive = searchQuery.trim() !== "";
-  
+
+  // Stepper calculations
   let step = 0;
   if (selectedBrand) step = 1;
   if (selectedBrand && selectedModel && selectedYear) step = 2;
   if (selectedBrand && selectedModel && selectedYear && selectedCategory) step = 3;
-  if (isSearchActive) step = 3; // Force products view directly
+  if (isSearchActive) step = 3;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans pb-24 pt-[80px]" dir="rtl">
+    <div className="min-h-screen bg-[#f8fafc] font-sans pb-24 pt-[80px]" dir="rtl">
       
-      {/* ── Page Header ── */}
-      <div className="bg-white border-b border-slate-100 py-10 shadow-xs mb-10 text-center">
-        <div className="max-w-4xl mx-auto px-4">
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mb-2">
-            كتالوج قطع غيار السيارات الأصلي
+      {/* ── Premium Hero Header ── */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-[#184510] to-slate-900 text-white py-16 sm:py-20 text-center mb-10 shadow-lg">
+        {/* Decorative Grid and Blur Patterns */}
+        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-400 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full bg-emerald-700/20 blur-3xl pointer-events-none" />
+        
+        <div className="relative max-w-4xl mx-auto px-4">
+          <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black text-[10px] px-3.5 py-1.5 rounded-full uppercase tracking-wider mb-4 animate-pulse">
+            <Sparkle size={10} className="fill-emerald-400" />
+            <span>كتالوج الجارحي الحديث</span>
+          </span>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-4 text-white leading-tight">
+            تصفح وابحث عن قطع غيار سيارتك
           </h1>
-          <p className="text-slate-500 text-xs sm:text-sm font-bold leading-relaxed max-w-lg mx-auto">
-            أختر سيارتك وموديلها للوصول لقطع الغيار المطابقة والملائمة لرقم شاصي سيارتك بدقة 100%، وأضفها مباشرة لسلة المشتريات.
+          <p className="text-slate-300 text-xs sm:text-sm font-bold leading-relaxed max-w-lg mx-auto mb-8">
+            نظام فرز وتصفية ذكي يساعدك على تصفح قطع الهيكل، الميكانيك، والكهرباء المطابقة لموديل وسنة صنع سيارتك بدقة متكاملة.
           </p>
 
-          {/* Quick Search Input */}
-          <div className="mt-8 max-w-md mx-auto relative px-4">
+          {/* Elegant Floating Search Input */}
+          <div className="max-w-md mx-auto relative px-4">
             <input
               type="text"
-              placeholder="ابحث مباشرة باسم القطعة أو موديل السيارة..."
+              placeholder="ابحث بالاسم، الرقم، أو الموديل (مثال: فوانيس، بريوس...)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 text-slate-800 rounded-2xl py-3.5 pr-11 pl-4 text-xs font-bold border border-slate-200 focus:border-[#2d7a1f] focus:bg-white shadow-sm font-sans outline-none text-right placeholder-slate-400"
+              className="w-full bg-white/10 text-white backdrop-blur-md rounded-2xl py-4 pr-11 pl-4 text-xs font-bold border border-white/15 focus:border-emerald-500 focus:bg-white focus:text-slate-900 shadow-md font-sans outline-none text-right placeholder-slate-400 transition-all duration-300"
             />
             <Search className="absolute top-1/2 right-7.5 -translate-y-1/2 text-slate-400" size={16} />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute top-1/2 left-7.5 -translate-y-1/2 text-slate-400 hover:text-slate-650 bg-slate-100/80 hover:bg-slate-200/50 rounded-lg p-1 border-0 cursor-pointer transition-colors"
+                className="absolute top-1/2 left-7.5 -translate-y-1/2 text-slate-400 hover:text-slate-200 bg-white/5 hover:bg-white/10 rounded-lg p-1 border-0 cursor-pointer transition-colors"
               >
                 <X size={12} />
               </button>
@@ -382,45 +369,45 @@ function StoreContent() {
         </div>
       </div>
 
-      <div className="max-w-[1200px] mx-auto px-4">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* ── Wizard Progress Trail (Only visible when not performing global search) ── */}
+        {/* ── Wizard Progress Trail ── */}
         {!isSearchActive && (
-          <div className="flex items-center justify-between bg-white border border-slate-100 rounded-2xl p-4 mb-8 shadow-xs overflow-x-auto gap-3 text-xs font-bold text-slate-400">
+          <div className="max-w-3xl mx-auto flex items-center justify-between bg-white border border-slate-100 rounded-3xl p-5 mb-10 shadow-xs gap-3 text-[11px] font-black text-slate-400">
             <button 
               onClick={resetAll}
-              className={`flex items-center gap-1.5 border-0 bg-transparent cursor-pointer font-bold ${step >= 0 ? "text-[#2d7a1f] font-black" : ""}`}
+              className={`flex items-center gap-2 border-0 bg-transparent cursor-pointer font-bold ${step >= 0 ? "text-[#2d7a1f]" : ""}`}
             >
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 0 ? "bg-[#2d7a1f] text-white" : "bg-slate-100 text-slate-500"}`}>١</span>
-              <span>السيارة</span>
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all ${step >= 0 ? "bg-[#2d7a1f] text-white shadow-sm shadow-[#2d7a1f]/20 scale-110" : "bg-slate-100 text-slate-500"}`}>١</span>
+              <span>نوع السيارة</span>
             </button>
             
-            <span className="text-slate-300">←</span>
+            <div className={`flex-1 h-0.5 mx-2 rounded-full ${step >= 1 ? "bg-[#2d7a1f]/40" : "bg-slate-100"}`} />
             
             <button 
               onClick={() => { if (selectedBrand) { setSelectedModel(null); setSelectedYear(null); setSelectedCategory(null); } }}
               disabled={!selectedBrand}
-              className={`flex items-center gap-1.5 border-0 bg-transparent cursor-pointer font-bold disabled:opacity-50 disabled:cursor-not-allowed ${step >= 1 ? "text-[#2d7a1f] font-black" : ""}`}
+              className={`flex items-center gap-2 border-0 bg-transparent cursor-pointer font-bold disabled:opacity-50 disabled:cursor-not-allowed ${step >= 1 ? "text-[#2d7a1f]" : ""}`}
             >
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 1 ? "bg-[#2d7a1f] text-white" : "bg-slate-100 text-slate-500"}`}>٢</span>
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all ${step >= 1 ? "bg-[#2d7a1f] text-white shadow-sm shadow-[#2d7a1f]/20 scale-110" : "bg-slate-100 text-slate-500"}`}>٢</span>
               <span>الموديل والسنة</span>
             </button>
             
-            <span className="text-slate-300">←</span>
+            <div className={`flex-1 h-0.5 mx-2 rounded-full ${step >= 2 ? "bg-[#2d7a1f]/40" : "bg-slate-100"}`} />
             
             <button 
               onClick={() => { if (selectedModel) { setSelectedCategory(null); } }}
               disabled={!selectedModel}
-              className={`flex items-center gap-1.5 border-0 bg-transparent cursor-pointer font-bold disabled:opacity-50 disabled:cursor-not-allowed ${step >= 2 ? "text-[#2d7a1f] font-black" : ""}`}
+              className={`flex items-center gap-2 border-0 bg-transparent cursor-pointer font-bold disabled:opacity-50 disabled:cursor-not-allowed ${step >= 2 ? "text-[#2d7a1f]" : ""}`}
             >
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 2 ? "bg-[#2d7a1f] text-white" : "bg-slate-100 text-slate-500"}`}>٣</span>
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all ${step >= 2 ? "bg-[#2d7a1f] text-white shadow-sm shadow-[#2d7a1f]/20 scale-110" : "bg-slate-100 text-slate-500"}`}>٣</span>
               <span>القسم الرئيسي</span>
             </button>
             
-            <span className="text-slate-300">←</span>
+            <div className={`flex-1 h-0.5 mx-2 rounded-full ${step >= 3 ? "bg-[#2d7a1f]/40" : "bg-slate-100"}`} />
             
-            <div className={`flex items-center gap-1.5 font-bold ${step >= 3 ? "text-[#2d7a1f] font-black" : ""}`}>
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${step >= 3 ? "bg-[#2d7a1f] text-white" : "bg-slate-100 text-slate-500"}`}>٤</span>
+            <div className={`flex items-center gap-2 font-bold ${step >= 3 ? "text-[#2d7a1f]" : ""}`}>
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] transition-all ${step >= 3 ? "bg-[#2d7a1f] text-white shadow-sm shadow-[#2d7a1f]/20 scale-110" : "bg-slate-100 text-slate-500"}`}>٤</span>
               <span>تصفح القطع</span>
             </div>
           </div>
@@ -428,9 +415,9 @@ function StoreContent() {
 
         {/* ── Step 0: Choose Brand ── */}
         {step === 0 && (
-          <div className="bg-white border border-slate-100 rounded-3xl p-8 shadow-xs text-center">
-            <h2 className="text-[#2d7a1f] text-lg font-black tracking-tight mb-8">
-              أختر نوع سيارتك
+          <div className="bg-white border border-slate-100 rounded-3xl p-8 sm:p-12 shadow-xs text-center">
+            <h2 className="text-[#2d7a1f] text-lg sm:text-xl font-black tracking-tight mb-8">
+              اختر نوع سيارتك للبدء
             </h2>
             
             {dynamicBrands.length === 0 ? (
@@ -449,10 +436,10 @@ function StoreContent() {
                   <button
                     key={brand.key}
                     onClick={() => handleBrandSelect(brand.key)}
-                    className="group bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-[#2d7a1f] rounded-2xl p-6 w-[140px] h-[140px] sm:w-[160px] sm:h-[160px] flex flex-col items-center justify-center gap-4 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_8px_30px_rgba(45,122,31,0.08)]"
+                    className="group bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-[#2d7a1f] rounded-3xl p-6 w-[130px] h-[130px] sm:w-[160px] sm:h-[160px] flex flex-col items-center justify-center gap-4 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_12px_45px_rgba(45,122,31,0.08)] hover:-translate-y-1"
                     aria-label={brand.name}
                   >
-                    <div className="text-slate-650 group-hover:text-[#2d7a1f] transition-colors duration-300 flex items-center justify-center h-16 w-full">
+                    <div className="text-slate-700 group-hover:text-[#2d7a1f] transition-colors duration-300 flex items-center justify-center h-16 w-full overflow-hidden">
                       {brand.logo}
                     </div>
                     <span className="text-xs font-black text-slate-800 group-hover:text-[#2d7a1f] transition-colors">
@@ -464,10 +451,10 @@ function StoreContent() {
             )}
 
             {dynamicBrands.length > 0 && (
-              <div className="mt-8 border-t border-slate-50 pt-6">
+              <div className="mt-10 border-t border-slate-100 pt-8">
                 <button
                   onClick={() => { setSelectedBrand("all"); setSelectedModel("all"); setSelectedYear("all"); setSelectedCategory("all"); }}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-black text-xs px-8 py-3.5 rounded-xl border-0 cursor-pointer transition-colors"
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-650 font-black text-xs px-8 py-4 rounded-2xl border-0 cursor-pointer transition-colors shadow-xs"
                 >
                   تصفح جميع قطع الغيار المتاحة بالموقع مباشرة
                 </button>
@@ -478,17 +465,17 @@ function StoreContent() {
 
         {/* ── Step 1: Choose Model & Year ── */}
         {step === 1 && selectedBrand && (
-          <div className="bg-white border border-slate-100 rounded-3xl p-8 shadow-xs">
+          <div className="bg-white border border-slate-100 rounded-3xl p-8 sm:p-10 shadow-xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-5 mb-8">
               <div>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">الماركة المختارة</span>
                 <span className="text-xs font-black text-[#2d7a1f]">
-                  {dynamicBrands.find(b => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}
+                  {dynamicBrands.find((b) => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}
                 </span>
               </div>
               <button
                 onClick={resetAll}
-                className="flex items-center gap-1 text-slate-400 hover:text-[#2d7a1f] font-bold text-xs bg-slate-50 px-3 py-1.5 rounded-xl border-0 cursor-pointer transition-all"
+                className="flex items-center gap-1 text-slate-400 hover:text-[#2d7a1f] font-bold text-xs bg-slate-50 px-3.5 py-2 rounded-xl border-0 cursor-pointer transition-all"
               >
                 <span>رجوع للماركات</span>
                 <ArrowRight size={13} />
@@ -496,7 +483,7 @@ function StoreContent() {
             </div>
 
             <h2 className="text-base font-black text-slate-900 mb-6 pr-1">
-              أختر الموديل وسنة الصنع للسيارة:
+              اختر موديل سيارتك وسنة الصنع:
             </h2>
 
             {modelYearCombos.length === 0 ? (
@@ -504,39 +491,66 @@ function StoreContent() {
                 لا توجد موديلات مدرجة حالياً لهذه السيارة بجدول البيانات، اضغط رجوع أو تصفح الأقسام مباشرة.
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {modelYearCombos.map((combo) => (
-                  <button
-                    key={`${combo.model}_${combo.year}`}
-                    onClick={() => handleModelYearSelect(combo.model, combo.year)}
-                    className="bg-white hover:bg-slate-50/85 border border-slate-200 hover:border-[#2d7a1f] rounded-2xl p-5 text-right font-sans transition-all duration-300 cursor-pointer flex items-center justify-between group shadow-xs"
-                  >
-                    <span className="text-xs font-black text-slate-850 group-hover:text-[#2d7a1f] transition-colors">
-                      {combo.model} {combo.year}
-                    </span>
-                    <ChevronLeft size={14} className="text-slate-400 group-hover:translate-x-[-4px] group-hover:text-[#2d7a1f] transition-all" />
-                  </button>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                {modelYearCombos.map((combo) => {
+                  const modelKey = combo.model.toLowerCase();
+                  const imageUrl = modelSettings[modelKey] || "/assets/images/placeholder-product.png";
+                  return (
+                    <button
+                      key={`${combo.model}_${combo.year}`}
+                      onClick={() => handleModelYearSelect(combo.model, combo.year)}
+                      className="group bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-[#2d7a1f] rounded-3xl overflow-hidden p-4 flex flex-col items-center justify-between gap-4 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_12px_40px_rgba(45,122,31,0.12)] hover:-translate-y-1.5 text-right w-full min-h-[220px]"
+                    >
+                      {/* Model Image container */}
+                      <div className="relative w-full aspect-[4/3] rounded-2xl bg-slate-50 overflow-hidden flex items-center justify-center">
+                        <img
+                          src={imageUrl}
+                          alt={combo.model}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            e.currentTarget.src = "/assets/images/placeholder-product.png";
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      </div>
+                      
+                      {/* Model Details */}
+                      <div className="w-full flex items-center justify-between mt-2 border-t border-slate-50 pt-3">
+                        <div className="flex flex-col gap-0.5 text-right">
+                          <span className="text-xs font-black text-slate-800 group-hover:text-[#2d7a1f] transition-colors">
+                            {combo.model}
+                          </span>
+                          <span className="text-[10px] font-black text-slate-400 font-en">
+                            موديل {combo.year}
+                          </span>
+                        </div>
+                        <span className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-[#2d7a1f]/10 text-slate-400 group-hover:text-[#2d7a1f] flex items-center justify-center transition-all">
+                          ←
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
         )}
 
-        {/* ── Step 2: Choose Category (3 green bars) ── */}
+        {/* ── Step 2: Choose Category ── */}
         {step === 2 && selectedBrand && selectedModel && selectedYear && (
-          <div className="bg-white border border-slate-100 rounded-3xl p-8 shadow-xs text-center">
+          <div className="bg-white border border-slate-100 rounded-3xl p-8 sm:p-10 shadow-xs text-center">
             
             {/* Context breadcrumb */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-5 mb-8 text-right">
               <div>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">السيارة المحددة</span>
                 <span className="text-xs font-black text-[#2d7a1f]">
-                  {dynamicBrands.find(b => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()} · {selectedModel} {selectedYear}
+                  {dynamicBrands.find((b) => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()} · {selectedModel} {selectedYear}
                 </span>
               </div>
               <button
                 onClick={() => { setSelectedModel(null); setSelectedYear(null); }}
-                className="flex items-center gap-1 text-slate-400 hover:text-[#2d7a1f] font-bold text-xs bg-slate-50 px-3 py-1.5 rounded-xl border-0 cursor-pointer transition-all"
+                className="flex items-center gap-1 text-slate-400 hover:text-[#2d7a1f] font-bold text-xs bg-slate-50 px-3.5 py-2 rounded-xl border-0 cursor-pointer transition-all"
               >
                 <span>تغيير الموديل</span>
                 <ArrowRight size={13} />
@@ -586,234 +600,290 @@ function StoreContent() {
           </div>
         )}
 
-        {/* ── Step 3: Filtered Products Catalog Grid ── */}
+        {/* ── Step 3: Redesigned Catalog Grid with Sticky Sidebar ── */}
         {step === 3 && (
-          <div className="flex flex-col gap-8 animate-fade-in">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-fade-in">
             
-            {/* Header / Active Selections Summary */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white border border-slate-100 p-5 rounded-3xl shadow-xs gap-4 text-right" dir="rtl">
-              <div>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">القطع المعروضة لسيارتك</span>
-                <div className="flex items-center flex-wrap gap-2 text-xs font-black text-slate-800">
-                  {selectedBrand && selectedBrand !== "all" && (
-                    <span className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg">
-                      {dynamicBrands.find(b => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}
-                    </span>
-                  )}
-                  {selectedModel && selectedModel !== "all" && (
-                    <span className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg">
-                      {selectedModel} {selectedYear}
-                    </span>
-                  )}
-                  {selectedCategory && selectedCategory !== "all" && (
-                    <span className="bg-[#2d7a1f]/10 text-[#2d7a1f] px-3 py-1.5 rounded-lg">
-                      {CATEGORIES.find(c => c.key === selectedCategory)?.label}
-                    </span>
-                  )}
-                  {isSearchActive && (
-                    <span className="bg-brand-yellow/20 text-slate-900 px-3 py-1.5 rounded-lg font-bold">
-                      بحث: {searchQuery}
-                    </span>
-                  )}
-                </div>
+            {/* Sticky Sidebar Filter Panel */}
+            <div className="lg:col-span-1 flex flex-col gap-6 bg-white border border-slate-100 p-6 rounded-3xl shadow-xs text-right self-start sticky top-[100px] z-10">
+              <div className="border-b border-slate-100 pb-4">
+                <h3 className="text-xs font-black text-slate-800 flex items-center gap-2">
+                  <Settings size={14} className="text-[#2d7a1f]" />
+                  <span>تصفية واختيار النتائج</span>
+                </h3>
               </div>
 
+              {/* Active Selection Details */}
+              <div className="flex flex-col gap-5">
+                {/* Brand Selection */}
+                {selectedBrand && selectedBrand !== "all" && (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">الماركة</span>
+                    <div className="flex items-center justify-between bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl text-xs font-black text-slate-700">
+                      <span>{dynamicBrands.find((b) => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}</span>
+                      <button
+                        onClick={() => { setSelectedBrand(null); setSelectedModel(null); setSelectedYear(null); setSelectedCategory(null); }}
+                        className="text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0.5 transition-colors"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Model & Year Selection */}
+                {selectedModel && selectedModel !== "all" && (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">الموديل والسنة</span>
+                    <div className="flex items-center justify-between bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl text-xs font-black text-slate-700">
+                      <span>{selectedModel} {selectedYear}</span>
+                      <button
+                        onClick={() => { setSelectedModel(null); setSelectedYear(null); setSelectedCategory(null); }}
+                        className="text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0.5 transition-colors"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Category Selection */}
+                {selectedCategory && selectedCategory !== "all" && (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">القسم</span>
+                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-xl text-xs font-black text-[#2d7a1f]">
+                      <span>{selectedCategory}</span>
+                      <button
+                        onClick={() => setSelectedCategory(null)}
+                        className="text-emerald-450 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0.5 transition-colors"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Search Text */}
+                {isSearchActive && (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">نص البحث</span>
+                    <div className="flex items-center justify-between bg-amber-50 border border-amber-100 px-3 py-2 rounded-xl text-xs font-black text-amber-700">
+                      <span className="truncate">"{searchQuery}"</span>
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        className="text-amber-500 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0.5 transition-colors"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Reset Trail trigger */}
               <button
                 onClick={resetAll}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-650 font-black text-xs px-6 py-3 rounded-2xl border-0 cursor-pointer flex items-center gap-1.5 transition-colors shrink-0"
+                className="w-full flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-650 font-black text-xs py-3.5 rounded-xl border-0 cursor-pointer transition-colors mt-2"
               >
-                <RotateCcw size={13} />
-                <span>بدء اختيار سيارة جديدة</span>
+                <RotateCcw size={12} />
+                <span>إعادة تصفية جديدة</span>
               </button>
             </div>
 
-            {/* Empty dynamic state */}
-            {paginatedProducts.length === 0 ? (
-              <div className="bg-white border border-slate-100 rounded-3xl p-16 text-center flex flex-col items-center justify-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-slate-50 text-slate-450 flex items-center justify-center mb-2">
-                  <ShoppingBag size={28} />
+            {/* Catalog Grid Area */}
+            <div className="lg:col-span-3 flex flex-col gap-6">
+              
+              {/* Selections / Info Bar */}
+              <div className="flex items-center justify-between bg-white border border-slate-100 px-5 py-4 rounded-2xl shadow-xs text-right">
+                <div className="text-[10px] text-slate-400 font-bold">
+                  تم العثور على <span className="text-slate-800 font-black font-en text-xs">{filteredProducts.length}</span> قطعة غيار متوافقة
                 </div>
-                <h3 className="text-base font-black text-slate-800">لا توجد قطع غيار مطابقة للتحديد حالياً</h3>
-                <p className="text-slate-400 text-xs font-bold max-w-sm leading-relaxed">
-                  هذا القسم سيتم ربطه بملفات الإكسيل وقاعدة البيانات قريباً. يرجى الضغط للرجوع أو التواصل مباشرة لطلب القطعة.
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={resetAll}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3 rounded-xl font-black text-xs transition-colors cursor-pointer border-0"
-                  >
-                    رجوع للمتجر
-                  </button>
-                  <a
-                    href={`https://wa.me/962789089842?text=${encodeURIComponent(`أبحث عن قطع غيار لسيارة ${selectedModel || ""} ${selectedYear || ""} قسم ${CATEGORIES.find(c => c.key === selectedCategory)?.label || ""}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-6 py-3 rounded-xl font-black text-xs transition-colors cursor-pointer border-0 decoration-none flex items-center gap-1.5 shadow-sm"
-                  >
-                    <MessageCircle size={14} fill="currentColor" />
-                    <span>طلب فوري واتساب</span>
-                  </a>
-                </div>
+                <button
+                  onClick={resetAll}
+                  className="bg-slate-50 hover:bg-slate-100 text-slate-500 font-black text-[10px] px-3.5 py-1.5 rounded-xl border-0 cursor-pointer transition-colors"
+                >
+                  تغيير السيارة المختارة
+                </button>
               </div>
-            ) : (
-              /* Products Grid displaying database items */
-              <div>
-                <div className="text-[10px] text-slate-400 font-bold mb-4 pr-1">
-                  عرض <span className="text-slate-700 font-black font-en">{filteredProducts.length}</span> قطعة غيار مطابقة للتحديد
+
+              {/* Products list or Empty status */}
+              {paginatedProducts.length === 0 ? (
+                <div className="bg-white border border-slate-100 rounded-3xl p-16 text-center flex flex-col items-center justify-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-slate-50 text-slate-450 flex items-center justify-center mb-2">
+                    <ShoppingBag size={28} />
+                  </div>
+                  <h3 className="text-base font-black text-slate-800">لا توجد قطع غيار مطابقة حالياً</h3>
+                  <p className="text-slate-400 text-xs font-bold max-w-sm leading-relaxed">
+                    لم نجد أي قطع غيار تناسب هذا الاختيار في مستودعنا حالياً. اضغط للرجوع أو اطلب القطعة مباشرة عبر واتساب.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={resetAll}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3 rounded-xl font-black text-xs transition-colors cursor-pointer border-0"
+                    >
+                      رجوع للمتجر
+                    </button>
+                    <a
+                      href={`https://wa.me/962789089842?text=${encodeURIComponent(
+                        `أبحث عن قطعة غيار غير متوفرة لسيارة ${selectedModel || ""} ${selectedYear || ""} قسم ${selectedCategory || ""}`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-[#25D366] hover:bg-[#1ebd59] text-white px-6 py-3 rounded-xl font-black text-xs transition-colors cursor-pointer border-0 decoration-none flex items-center gap-1.5 shadow-sm"
+                    >
+                      <MessageCircle size={14} fill="currentColor" />
+                      <span>طلب مباشر واتساب</span>
+                    </a>
+                  </div>
                 </div>
+              ) : (
+                <div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
+                    {paginatedProducts.map((product) => {
+                      const hasDiscount = product.originalPrice && product.originalPrice > product.price;
+                      const discountPct = hasDiscount
+                        ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
+                        : 0;
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-                  {paginatedProducts.map((product) => {
-                    const hasDiscount =
-                      product.originalPrice && product.originalPrice > product.price;
-                    const discountPct = hasDiscount
-                      ? Math.round(
-                          ((product.originalPrice! - product.price) /
-                            product.originalPrice!) *
-                            100
-                        )
-                      : 0;
-
-                    return (
-                      <div
-                        key={product.id}
-                        className="group bg-white rounded-3xl overflow-hidden border border-slate-100 hover:border-slate-250 hover:shadow-[0_16px_40px_rgba(0,0,0,0.05)] hover:-translate-y-1 transition-all duration-300 flex flex-col p-4 text-right"
-                      >
-                        {/* Image container */}
-                        <Link href={`/store/${product.id}`} className="relative w-full bg-slate-50/70 rounded-2xl flex items-center justify-center overflow-hidden mb-4 aspect-square cursor-pointer">
-                          <img
-                            src={product.image.startsWith("assets") ? `/${product.image}` : product.image}
-                            alt={product.name}
-                            className="w-[85%] h-[85%] object-contain group-hover:scale-103 transition-transform duration-500"
-                            onError={(e) => {
-                              e.currentTarget.src =
-                                "/assets/images/placeholder-product.png";
-                            }}
-                          />
-                          {hasDiscount && (
-                            <span className="absolute top-3 right-3 bg-red-500 text-white font-black text-[0.62rem] px-2 py-0.5 rounded-lg z-10">
-                              خصم {discountPct}%
-                            </span>
-                          )}
-                          {product.conditionText && (
-                            <span className="absolute top-3 left-3 bg-white text-slate-600 border border-slate-200/50 font-black text-[0.62rem] px-2 py-0.5 rounded-lg z-10">
-                              {product.conditionText}
-                            </span>
-                          )}
-                        </Link>
-
-                        {/* Content block */}
-                        <div className="flex flex-col flex-1">
-                          <span className="text-[0.62rem] font-black text-slate-400 uppercase tracking-wider mb-1 font-en">
-                            {product.brand ? product.brand.toUpperCase() : "SPARE PARTS"}
-                          </span>
-                          <Link href={`/store/${product.id}`}>
-                            <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-snug line-clamp-2 mb-1 hover:text-[#2d7a1f] transition-colors cursor-pointer">
-                              {product.name}
-                            </h3>
+                      return (
+                        <div
+                          key={product.id}
+                          className="group bg-white rounded-3xl overflow-hidden border border-slate-100 hover:border-slate-250 hover:shadow-[0_16px_40px_rgba(0,0,0,0.05)] hover:-translate-y-1 transition-all duration-300 flex flex-col p-4 text-right"
+                        >
+                          {/* Image box */}
+                          <Link
+                            href={`/store/${product.id}`}
+                            className="relative w-full bg-slate-50/70 rounded-2xl flex items-center justify-center overflow-hidden mb-4 aspect-square cursor-pointer"
+                          >
+                            <img
+                              src={product.image.startsWith("assets") ? `/${product.image}` : product.image}
+                              alt={product.name}
+                              className="w-[85%] h-[85%] object-contain group-hover:scale-103 transition-transform duration-500"
+                              onError={(e) => {
+                                e.currentTarget.src = "/assets/images/placeholder-product.png";
+                              }}
+                            />
+                            {hasDiscount && (
+                              <span className="absolute top-3 right-3 bg-red-500 text-white font-black text-[0.62rem] px-2 py-0.5 rounded-lg z-10">
+                                خصم {discountPct}%
+                              </span>
+                            )}
+                            {product.conditionText && (
+                              <span className="absolute top-3 left-3 bg-white text-slate-600 border border-slate-200/50 font-black text-[0.62rem] px-2 py-0.5 rounded-lg z-10">
+                                {product.conditionText}
+                              </span>
+                            )}
                           </Link>
-                          <p className="text-[0.68rem] font-bold text-slate-400 uppercase font-en mb-4">
-                            {product.model} · {product.year}
-                          </p>
 
-                          {/* Price & Cart button */}
-                          <div className="flex items-center justify-between gap-3 pt-3.5 border-t border-slate-50 mt-auto">
-                            <div className="flex flex-col">
-                              {product.price > 0 ? (
-                                <>
-                                  {hasDiscount && (
-                                    <span className="text-[0.68rem] font-bold text-slate-400 line-through">
-                                      {product.originalPrice} د.أ
+                          {/* Content block */}
+                          <div className="flex flex-col flex-1">
+                            <span className="text-[0.62rem] font-black text-slate-400 uppercase tracking-wider mb-1 font-en">
+                              {product.brand ? product.brand.toUpperCase() : "SPARE PARTS"}
+                            </span>
+                            <Link href={`/store/${product.id}`}>
+                              <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-snug line-clamp-2 mb-1 hover:text-[#2d7a1f] transition-colors cursor-pointer">
+                                {product.name}
+                              </h3>
+                            </Link>
+                            <p className="text-[0.68rem] font-bold text-slate-400 uppercase font-en mb-4">
+                              {product.model} · {product.year}
+                            </p>
+
+                            {/* Pricing area */}
+                            <div className="flex items-center justify-between gap-3 pt-3.5 border-t border-slate-50 mt-auto">
+                              <div className="flex flex-col">
+                                {product.price > 0 ? (
+                                  <>
+                                    {hasDiscount && (
+                                      <span className="text-[0.68rem] font-bold text-slate-400 line-through">
+                                        {product.originalPrice} د.أ
+                                      </span>
+                                    )}
+                                    <span className="font-en text-sm sm:text-base font-black text-slate-900">
+                                      {product.price}{" "}
+                                      <span className="text-xs font-bold text-slate-500">د.أ</span>
                                     </span>
-                                  )}
-                                  <span className="font-en text-sm sm:text-base font-black text-slate-900">
-                                    {product.price}{" "}
-                                    <span className="text-xs font-bold text-slate-500">
-                                      د.أ
-                                    </span>
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-xs font-black text-[#2d7a1f]">
-                                  طلب السعر
-                                </span>
-                              )}
+                                  </>
+                                ) : (
+                                  <span className="text-xs font-black text-[#2d7a1f]">طلب السعر</span>
+                                )}
+                              </div>
+
+                              <button
+                                onClick={(e) => handleAddToCart(product, e)}
+                                className="bg-slate-50 hover:bg-[#2d7a1f] text-slate-500 hover:text-white p-2.5 rounded-xl transition-all duration-300 flex items-center justify-center shrink-0 border-0 cursor-pointer"
+                                title="إضافة للسلة"
+                                aria-label="إضافة المنتج للسلة"
+                              >
+                                <ShoppingCart size={15} />
+                              </button>
                             </div>
-
-                            <button
-                              onClick={(e) => handleAddToCart(product, e)}
-                              className="bg-slate-50 hover:bg-[#2d7a1f] text-slate-500 hover:text-white p-2.5 rounded-xl transition-all duration-300 flex items-center justify-center shrink-0 border-0 cursor-pointer"
-                              title="إضافة للسلة"
-                              aria-label="إضافة المنتج للسلة"
-                            >
-                              <ShoppingCart size={15} />
-                            </button>
                           </div>
                         </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Ellipsis Pagination */}
+                  {totalPages > 1 && (() => {
+                    const delta = 2;
+                    const pages: (number | "...")[] = [];
+                    const left = Math.max(2, currentPage - delta);
+                    const right = Math.min(totalPages - 1, currentPage + delta);
+
+                    pages.push(1);
+                    if (left > 2) pages.push("...");
+                    for (let i = left; i <= right; i++) pages.push(i);
+                    if (right < totalPages - 1) pages.push("...");
+                    if (totalPages > 1) pages.push(totalPages);
+
+                    return (
+                      <div className="flex items-center justify-center gap-1.5 mt-10 pt-5 border-t border-slate-100 font-en flex-wrap">
+                        <button
+                          onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
+                          className="w-9 h-9 rounded-lg font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-650 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                          aria-label="الصفحة السابقة"
+                        >
+                          ‹
+                        </button>
+
+                        {pages.map((page, i) =>
+                          page === "..." ? (
+                            <span key={`ellipsis-${i}`} className="w-9 h-9 flex items-center justify-center text-slate-400 text-xs font-bold select-none font-sans">
+                              …
+                            </span>
+                          ) : (
+                            <button
+                              key={page}
+                              onClick={() => handlePageChange(page as number)}
+                              className={`w-9 h-9 rounded-lg font-black text-xs transition-all border-0 cursor-pointer flex items-center justify-center ${
+                                currentPage === page
+                                  ? "bg-[#2d7a1f] text-white shadow-md shadow-[#2d7a1f]/20"
+                                  : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+                              }`}
+                              aria-label={`صفحة ${page}`}
+                              aria-current={currentPage === page ? "page" : undefined}
+                            >
+                              {page}
+                            </button>
+                          )
+                        )}
+
+                        <button
+                          onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                          disabled={currentPage === totalPages}
+                          className="w-9 h-9 rounded-lg font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-650 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                          aria-label="الصفحة التالية"
+                        >
+                          ›
+                        </button>
                       </div>
                     );
-                  })}
+                  })()}
                 </div>
-
-                {/* Ellipsis Pagination */}
-                {totalPages > 1 && (() => {
-                  const delta = 2;
-                  const pages: (number | "...")[] = [];
-                  const left = Math.max(2, currentPage - delta);
-                  const right = Math.min(totalPages - 1, currentPage + delta);
-
-                  pages.push(1);
-                  if (left > 2) pages.push("...");
-                  for (let i = left; i <= right; i++) pages.push(i);
-                  if (right < totalPages - 1) pages.push("...");
-                  if (totalPages > 1) pages.push(totalPages);
-
-                  return (
-                    <div className="flex items-center justify-center gap-1.5 mt-10 pt-5 border-t border-slate-100 font-en flex-wrap">
-                      <button
-                        onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                        disabled={currentPage === 1}
-                        className="w-9 h-9 rounded-lg font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-650 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                        aria-label="الصفحة السابقة"
-                      >
-                        ‹
-                      </button>
-
-                      {pages.map((page, i) =>
-                        page === "..." ? (
-                          <span key={`ellipsis-${i}`} className="w-9 h-9 flex items-center justify-center text-slate-400 text-xs font-bold select-none font-sans">
-                            …
-                          </span>
-                        ) : (
-                          <button
-                            key={page}
-                            onClick={() => handlePageChange(page as number)}
-                            className={`w-9 h-9 rounded-lg font-black text-xs transition-all border-0 cursor-pointer flex items-center justify-center ${
-                              currentPage === page
-                                ? "bg-[#2d7a1f] text-white shadow-md shadow-[#2d7a1f]/20"
-                                : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
-                            }`}
-                            aria-label={`صفحة ${page}`}
-                            aria-current={currentPage === page ? "page" : undefined}
-                          >
-                            {page}
-                          </button>
-                        )
-                      )}
-
-                      <button
-                        onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                        disabled={currentPage === totalPages}
-                        className="w-9 h-9 rounded-lg font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-650 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                        aria-label="الصفحة التالية"
-                      >
-                        ›
-                      </button>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
@@ -822,15 +892,12 @@ function StoreContent() {
   );
 }
 
-// Safe build trigger comment to reactivate deployment pipelines
 export default function StoreClient() {
   return (
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-white font-sans">
-          <div className="text-slate-450 font-black text-sm">
-            جاري تحميل تفاصيل المتجر...
-          </div>
+          <div className="text-slate-450 font-black text-sm">جاري تحميل تفاصيل المتجر...</div>
         </div>
       }
     >

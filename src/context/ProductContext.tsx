@@ -7,9 +7,11 @@ import importedProductsStatic from "../data/imported_products.json";
 interface ProductContextType {
   products: Product[];
   categorySettings: Record<string, string>;
+  brandSettings: Record<string, string>;
+  modelSettings: Record<string, string>;
   importProducts: (newProducts: Product[]) => void;
   resetProducts: () => void;
-  saveCategorySettings: (settings: Record<string, string>) => Promise<boolean>;
+  saveCategorySettings: (settings: { categories?: Record<string, string>; brands?: Record<string, string>; models?: Record<string, string> }) => Promise<boolean>;
   loading: boolean;
 }
 
@@ -18,17 +20,25 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 export function ProductProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categorySettings, setCategorySettings] = useState<Record<string, string>>({});
+  const [brandSettings, setBrandSettings] = useState<Record<string, string>>({});
+  const [modelSettings, setModelSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadProducts() {
-      // Load local storage category settings immediately for quick UI response
-      const localSettings = localStorage.getItem("aljarhee_category_settings");
-      if (localSettings) {
-        try {
-          setCategorySettings(JSON.parse(localSettings));
-        } catch (e) {
-          console.warn("Failed to parse category settings from localStorage:", e);
+      // Load local storage category/brand/model settings immediately for quick UI response
+      if (typeof window !== "undefined") {
+        const localCats = localStorage.getItem("aljarhee_category_settings");
+        const localBrs = localStorage.getItem("aljarhee_brand_settings");
+        const localMdls = localStorage.getItem("aljarhee_model_settings");
+        if (localCats) {
+          try { setCategorySettings(JSON.parse(localCats)); } catch (e) {}
+        }
+        if (localBrs) {
+          try { setBrandSettings(JSON.parse(localBrs)); } catch (e) {}
+        }
+        if (localMdls) {
+          try { setModelSettings(JSON.parse(localMdls)); } catch (e) {}
         }
       }
 
@@ -42,9 +52,18 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
             const settingsProduct = data.find((p: any) => p.id === 0);
             if (settingsProduct && settingsProduct.description) {
               try {
-                const parsedSettings = JSON.parse(settingsProduct.description);
-                setCategorySettings(parsedSettings);
-                localStorage.setItem("aljarhee_category_settings", JSON.stringify(parsedSettings));
+                const parsed = JSON.parse(settingsProduct.description);
+                const cats = parsed.categories || {};
+                const brs = parsed.brands || {};
+                const mdls = parsed.models || {};
+                
+                setCategorySettings(cats);
+                setBrandSettings(brs);
+                setModelSettings(mdls);
+
+                localStorage.setItem("aljarhee_category_settings", JSON.stringify(cats));
+                localStorage.setItem("aljarhee_brand_settings", JSON.stringify(brs));
+                localStorage.setItem("aljarhee_model_settings", JSON.stringify(mdls));
               } catch (e) {
                 console.error("Failed to parse database category settings:", e);
               }
@@ -67,7 +86,10 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
           const settingsProduct = parsed.find((p: any) => p.id === 0);
           if (settingsProduct && settingsProduct.description) {
             try {
-              setCategorySettings(JSON.parse(settingsProduct.description));
+              const parsedSettings = JSON.parse(settingsProduct.description);
+              setCategorySettings(parsedSettings.categories || {});
+              setBrandSettings(parsedSettings.brands || {});
+              setModelSettings(parsedSettings.models || {});
             } catch (e) {
               console.error("Failed to parse category settings from local storage:", e);
             }
@@ -87,7 +109,10 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
         const settingsProduct = staticImported.find((p: any) => p.id === 0);
         if (settingsProduct && settingsProduct.description) {
           try {
-            setCategorySettings(JSON.parse(settingsProduct.description));
+            const parsedSettings = JSON.parse(settingsProduct.description);
+            setCategorySettings(parsedSettings.categories || {});
+            setBrandSettings(parsedSettings.brands || {});
+            setModelSettings(parsedSettings.models || {});
           } catch (e) {
             console.error("Failed to parse static category settings:", e);
           }
@@ -120,8 +145,12 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   const resetProducts = () => {
     localStorage.removeItem("aljarhee_imported_products");
     localStorage.removeItem("aljarhee_category_settings");
+    localStorage.removeItem("aljarhee_brand_settings");
+    localStorage.removeItem("aljarhee_model_settings");
     setProducts(productsData);
     setCategorySettings({});
+    setBrandSettings({});
+    setModelSettings({});
 
     // Clear server API data
     fetch("/api/admin/import", {
@@ -133,16 +162,32 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     }).catch((err) => console.warn("Failed to reset products via API:", err));
   };
 
-  const saveCategorySettings = async (settings: Record<string, string>) => {
-    setCategorySettings(settings);
-    localStorage.setItem("aljarhee_category_settings", JSON.stringify(settings));
+  const saveCategorySettings = async (settings: { categories?: Record<string, string>; brands?: Record<string, string>; models?: Record<string, string> }) => {
+    const cats = settings.categories || categorySettings;
+    const brs = settings.brands || brandSettings;
+    const mdls = settings.models || modelSettings;
+
+    setCategorySettings(cats);
+    setBrandSettings(brs);
+    setModelSettings(mdls);
+
+    localStorage.setItem("aljarhee_category_settings", JSON.stringify(cats));
+    localStorage.setItem("aljarhee_brand_settings", JSON.stringify(brs));
+    localStorage.setItem("aljarhee_model_settings", JSON.stringify(mdls));
+
+    const payload = {
+      categories: cats,
+      brands: brs,
+      models: mdls
+    };
+
     try {
       const res = await fetch("/api/admin/category-settings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
       return res.ok;
     } catch (err) {
@@ -152,7 +197,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ProductContext.Provider value={{ products, categorySettings, importProducts, resetProducts, saveCategorySettings, loading }}>
+    <ProductContext.Provider value={{ products, categorySettings, brandSettings, modelSettings, importProducts, resetProducts, saveCategorySettings, loading }}>
       {children}
     </ProductContext.Provider>
   );

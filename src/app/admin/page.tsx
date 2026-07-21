@@ -130,7 +130,7 @@ export default function AdminPage() {
   const [passInput, setPassInput] = useState("");
   const [passError, setPassError] = useState(false);
 
-  const { products, categorySettings, saveCategorySettings, importProducts, resetProducts } = useProducts();
+  const { products, categorySettings, brandSettings, modelSettings, saveCategorySettings, importProducts, resetProducts } = useProducts();
   const { showToast } = useToast();
   const [dragActive, setDragActive] = useState(false);
   const [parsedData, setParsedData] = useState<any[]>([]);
@@ -152,6 +152,9 @@ export default function AdminPage() {
 
   // Category Settings States
   const [tempCategoryImages, setTempCategoryImages] = useState<Record<string, string>>({});
+  const [tempBrandLogos, setTempBrandLogos] = useState<Record<string, string>>({});
+  const [tempModelImages, setTempModelImages] = useState<Record<string, string>>({});
+  const [imagesSubTab, setImagesSubTab] = useState<"categories" | "brands" | "models">("categories");
   const [isSavingCategoryImages, setIsSavingCategoryImages] = useState(false);
 
   const handleCategoryImgChange = (catName: string, val: string) => {
@@ -161,16 +164,40 @@ export default function AdminPage() {
     }));
   };
 
-  const handleSaveCategoryImages = async () => {
+  const handleBrandLogoChange = (brandName: string, val: string) => {
+    setTempBrandLogos(prev => ({
+      ...prev,
+      [brandName.toLowerCase()]: val
+    }));
+  };
+
+  const handleModelImageChange = (modelName: string, val: string) => {
+    setTempModelImages(prev => ({
+      ...prev,
+      [modelName.toLowerCase()]: val
+    }));
+  };
+
+  const handleSaveAllImages = async () => {
     setIsSavingCategoryImages(true);
     const finalSettings = {
-      ...categorySettings,
-      ...tempCategoryImages
+      categories: {
+        ...categorySettings,
+        ...tempCategoryImages
+      },
+      brands: {
+        ...brandSettings,
+        ...tempBrandLogos
+      },
+      models: {
+        ...modelSettings,
+        ...tempModelImages
+      }
     };
     const success = await saveCategorySettings(finalSettings);
     setIsSavingCategoryImages(false);
     if (success) {
-      showToast("تم حفظ صور الأقسام بنجاح ومزامنتها مع المتجر!", "success");
+      showToast("تم حفظ التعديلات بنجاح ومزامنتها مع المتجر!", "success");
     } else {
       showToast("حدث خطأ أثناء حفظ التعديلات. يرجى التحقق من الشبكة.", "error");
     }
@@ -1603,85 +1630,188 @@ export default function AdminPage() {
             </div>
           </div>
         ) : activeTab === "categories" ? (
-          /* Tab 4: Manage Category Images settings */
+          /* Tab 4: Manage Category, Brand, and Model Images */
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs flex flex-col gap-6" dir="rtl">
             <div className="border-b border-slate-100 pb-5">
               <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <Layers size={16} className="text-brand-green" />
-                <span>إدارة صور الأقسام</span>
+                <span>إدارة صور السيارات والأقسام</span>
               </h3>
-              <p className="text-slate-400 text-xs font-bold mt-1">تحديد صور الخلفية للأقسام المكتشفة في الإكسيل لعرضها ببطاقات جميلة في صفحة المتجر</p>
+              <p className="text-slate-400 text-xs font-bold mt-1">تخصيص صور تعبيرية للماركات، موديلات السيارات، وأقسام قطع الغيار لعرضها في المتجر</p>
             </div>
 
-            {/* List of categories */}
-            {(() => {
-              // Get unique categories found in products
-              const uniqueCategories = Array.from(
-                new Set(products.map(p => p.categoryName || p.category).filter(Boolean))
-              );
+            {/* Sub Tabs Selection */}
+            <div className="flex gap-2 border-b border-slate-100 pb-1">
+              <button
+                type="button"
+                onClick={() => setImagesSubTab("categories")}
+                className={`px-4 py-2 border-b-2 font-black text-xs transition-all cursor-pointer bg-transparent outline-none ${
+                  imagesSubTab === "categories"
+                    ? "border-brand-green text-brand-green"
+                    : "border-transparent text-slate-400 hover:text-slate-650"
+                }`}
+              >
+                صور الأقسام ({Array.from(new Set(products.map(p => p.categoryName || p.category).filter(Boolean))).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setImagesSubTab("brands")}
+                className={`px-4 py-2 border-b-2 font-black text-xs transition-all cursor-pointer bg-transparent outline-none ${
+                  imagesSubTab === "brands"
+                    ? "border-brand-green text-brand-green"
+                    : "border-transparent text-slate-400 hover:text-slate-650"
+                }`}
+              >
+                شعارات الماركات ({Array.from(new Set(products.map(p => p.brand).filter(Boolean))).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setImagesSubTab("models")}
+                className={`px-4 py-2 border-b-2 font-black text-xs transition-all cursor-pointer bg-transparent outline-none ${
+                  imagesSubTab === "models"
+                    ? "border-brand-green text-brand-green"
+                    : "border-transparent text-slate-400 hover:text-slate-650"
+                }`}
+              >
+                صور الموديلات ({Array.from(new Set(products.map(p => p.model).filter(Boolean))).length})
+              </button>
+            </div>
 
-              if (uniqueCategories.length === 0) {
-                return (
-                  <div className="text-center py-12 text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                    لا توجد أقسام مسجلة بالموقع حالياً. يرجى رفع وتحديث ملف الإكسيل أولاً لتظهر الأقسام هنا.
-                  </div>
-                );
-              }
-
-              return (
-                <div className="flex flex-col gap-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {uniqueCategories.map((catName) => {
-                      const currentVal = tempCategoryImages[catName] !== undefined ? tempCategoryImages[catName] : (categorySettings[catName] || "");
-                      return (
-                        <div key={catName} className="flex flex-col gap-2 p-5 border border-slate-100 rounded-2xl bg-slate-50/50 hover:bg-slate-50 transition-all text-right">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black text-slate-800">{catName}</span>
-                            {currentVal && (
-                              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف بالصورة</span>
-                            )}
-                          </div>
-                          <div className="flex gap-2 mt-1">
-                            <input
-                              type="text"
-                              value={currentVal}
-                              onChange={(e) => handleCategoryImgChange(catName, e.target.value)}
-                              placeholder="أدخل رابط صورة القسم (مثال: https://...)"
-                              className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 focus:border-brand-green focus:outline-none text-xs font-en"
-                            />
-                            {/* Preview box */}
-                            <div className="w-11 h-11 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                              {currentVal ? (
-                                <img src={currentVal} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/assets/images/placeholder-product.png"; }} />
-                              ) : (
-                                <Layers size={14} className="text-slate-400" />
-                              )}
+            {/* Sub Tab Contents */}
+            {imagesSubTab === "categories" && (
+              <div className="flex flex-col gap-6">
+                {(() => {
+                  const uniqueCategories = Array.from(new Set(products.map(p => p.categoryName || p.category).filter(Boolean)));
+                  if (uniqueCategories.length === 0) {
+                    return <div className="text-center py-10 text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">لا توجد أقسام مسجلة بالموقع حالياً.</div>;
+                  }
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {uniqueCategories.map(catName => {
+                        const currentVal = tempCategoryImages[catName] !== undefined ? tempCategoryImages[catName] : (categorySettings[catName] || "");
+                        return (
+                          <div key={catName} className="flex flex-col gap-1.5 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 text-right">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-slate-800">{catName}</span>
+                              {currentVal && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف</span>}
+                            </div>
+                            <div className="flex gap-2 mt-1">
+                              <input
+                                type="text"
+                                value={currentVal}
+                                onChange={(e) => handleCategoryImgChange(catName, e.target.value)}
+                                placeholder="أدخل رابط صورة القسم (مثال: https://...)"
+                                className="flex-1 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:outline-none text-xs font-en"
+                              />
+                              <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                                {currentVal ? <img src={currentVal} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/assets/images/placeholder-product.png"; }} /> : <Layers size={14} className="text-slate-400" />}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
-                  <div className="flex justify-end gap-3 mt-4 border-t border-slate-100 pt-5">
-                    <button
-                      onClick={handleSaveCategoryImages}
-                      disabled={isSavingCategoryImages}
-                      className="bg-[#2d7a1f] hover:bg-[#246118] disabled:opacity-50 text-white font-black text-xs px-8 py-3.5 rounded-xl border-0 cursor-pointer transition-all shadow-md shadow-[#2d7a1f]/10 flex items-center gap-2"
-                    >
-                      {isSavingCategoryImages ? (
-                        <>
-                          <Loader2 size={14} className="animate-spin" />
-                          <span>جاري الحفظ...</span>
-                        </>
-                      ) : (
-                        <span>حفظ صور الأقسام</span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
+            {imagesSubTab === "brands" && (
+              <div className="flex flex-col gap-6">
+                {(() => {
+                  const uniqueBrands = Array.from(new Set(products.map(p => p.brand).filter(Boolean)));
+                  if (uniqueBrands.length === 0) {
+                    return <div className="text-center py-10 text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">لا توجد ماركات مسجلة بالموقع حالياً.</div>;
+                  }
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {uniqueBrands.map(brandName => {
+                        const key = brandName.toLowerCase();
+                        const currentVal = tempBrandLogos[key] !== undefined ? tempBrandLogos[key] : (brandSettings[key] || "");
+                        return (
+                          <div key={brandName} className="flex flex-col gap-1.5 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 text-right">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-slate-800 font-en uppercase">{brandName}</span>
+                              {currentVal && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف</span>}
+                            </div>
+                            <div className="flex gap-2 mt-1">
+                              <input
+                                type="text"
+                                value={currentVal}
+                                onChange={(e) => handleBrandLogoChange(brandName, e.target.value)}
+                                placeholder="أدخل رابط شعار الماركة (مثال: https://...)"
+                                className="flex-1 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:outline-none text-xs font-en"
+                              />
+                              <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                                {currentVal ? <img src={currentVal} alt="Preview" className="w-full h-full object-contain p-1" onError={(e) => { e.currentTarget.src = "/assets/images/placeholder-product.png"; }} /> : <Layers size={14} className="text-slate-400" />}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {imagesSubTab === "models" && (
+              <div className="flex flex-col gap-6">
+                {(() => {
+                  const uniqueModels = Array.from(new Set(products.map(p => p.model).filter(Boolean)));
+                  if (uniqueModels.length === 0) {
+                    return <div className="text-center py-10 text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-dashed border-slate-200">لا توجد موديلات مسجلة بالموقع حالياً.</div>;
+                  }
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {uniqueModels.map(modelName => {
+                        const key = modelName.toLowerCase();
+                        const currentVal = tempModelImages[key] !== undefined ? tempModelImages[key] : (modelSettings[key] || "");
+                        return (
+                          <div key={modelName} className="flex flex-col gap-1.5 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 text-right">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-slate-800">{modelName}</span>
+                              {currentVal && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف</span>}
+                            </div>
+                            <div className="flex gap-2 mt-1">
+                              <input
+                                type="text"
+                                value={currentVal}
+                                onChange={(e) => handleModelImageChange(modelName, e.target.value)}
+                                placeholder="أدخل رابط صورة الموديل (مثال: https://...)"
+                                className="flex-1 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:outline-none text-xs font-en"
+                              />
+                              <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                                {currentVal ? <img src={currentVal} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/assets/images/placeholder-product.png"; }} /> : <Layers size={14} className="text-slate-400" />}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Save Button */}
+            <div className="flex justify-end gap-3 mt-4 border-t border-slate-100 pt-5">
+              <button
+                type="button"
+                onClick={handleSaveAllImages}
+                disabled={isSavingCategoryImages}
+                className="bg-[#2d7a1f] hover:bg-[#246118] disabled:opacity-50 text-white font-black text-xs px-8 py-3.5 rounded-xl border-0 cursor-pointer transition-all shadow-md shadow-[#2d7a1f]/10 flex items-center gap-2"
+              >
+                {isSavingCategoryImages ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>جاري الحفظ...</span>
+                  </>
+                ) : (
+                  <span>حفظ التعديلات</span>
+                )}
+              </button>
+            </div>
           </div>
         ) : (
           /* Tab 2: Manage Products Catalog */
