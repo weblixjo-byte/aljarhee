@@ -7,14 +7,37 @@ export async function getProductsList(): Promise<Product[]> {
 
   if (supabaseUrl && supabaseAnonKey && supabase) {
     try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("id", { ascending: true });
+      let allData: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (!error && data && data.length > 0) {
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .order("id", { ascending: true })
+          .range(from, from + pageSize - 1);
+
+        if (error) {
+          throw error;
+        }
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            from += pageSize;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      if (allData.length > 0) {
         // Map any field conversions if database has minor differences
-        return data.map((item: any) => ({
+        return allData.map((item: any) => ({
           id: Number(item.id),
           name: item.name,
           category: item.category,
@@ -33,11 +56,7 @@ export async function getProductsList(): Promise<Product[]> {
           newArrival: Boolean(item.newArrival),
         })) as Product[];
       }
-
-      if (error) {
-        console.warn("Supabase query returned error, using local fallback:", error);
-      }
-    } catch (err) {
+     } catch (err) {
       console.warn("Failed to fetch from Supabase, using local fallback:", err);
     }
   }
