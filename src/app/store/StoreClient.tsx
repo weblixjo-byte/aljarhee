@@ -624,8 +624,8 @@ function StoreContent() {
         {step === 3 && (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-fade-in">
             
-            {/* Sticky Sidebar Filter Panel */}
-            <div className="lg:col-span-1 flex flex-col gap-6 bg-white border border-slate-100 p-6 rounded-3xl shadow-xs text-right self-start sticky top-[100px] z-10">
+            {/* Sticky Sidebar Filter Panel — hidden on mobile, visible on desktop */}
+            <div className="hidden lg:flex lg:col-span-1 flex-col gap-6 bg-white border border-slate-100 p-6 rounded-3xl shadow-xs text-right self-start sticky top-[100px] z-10">
               <div className="border-b border-slate-100 pb-4">
                 <h3 className="text-xs font-black text-slate-800 flex items-center gap-2">
                   <Settings size={14} className="text-[#2d7a1f]" />

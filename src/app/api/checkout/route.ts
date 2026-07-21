@@ -77,71 +77,87 @@ export async function POST(req: NextRequest) {
 
     // 4. Send Notifications (Pushover + Web3Forms Email) if configured
     try {
-      const { data: settingsRow } = await supabaseAdmin
+      const { data: settingsRow, error: settingsErr } = await supabaseAdmin
         .from("products")
         .select("description")
         .eq("id", 0)
         .single();
 
+      if (settingsErr) {
+        console.warn("Could not read settings row:", settingsErr.message);
+      }
+
       let pushoverToken = process.env.PUSHOVER_TOKEN || "";
       let pushoverUser = process.env.PUSHOVER_USER || "";
-      let web3formsKey = "";
+      // Prefer env var, fallback to database value
+      let web3formsKey = process.env.WEB3FORMS_KEY || "";
 
       if (settingsRow && settingsRow.description) {
         try {
           const parsed = JSON.parse(settingsRow.description);
           if (parsed.pushoverToken) pushoverToken = parsed.pushoverToken;
           if (parsed.pushoverUser) pushoverUser = parsed.pushoverUser;
-          if (parsed.web3formsKey) web3formsKey = parsed.web3formsKey;
-        } catch (e) {}
+          // Only override if no env var is set
+          if (!web3formsKey && parsed.web3formsKey) web3formsKey = parsed.web3formsKey;
+        } catch (e) {
+          console.warn("Failed to parse settings JSON:", e);
+        }
       }
 
+      console.log(`[Checkout] web3formsKey present: ${!!web3formsKey}, pushover present: ${!!(pushoverToken && pushoverUser)}`);
+
       const itemsSummary = newOrder.cartItems
-        .map((item: any) => `- ${item.name} (الكمية: ${item.quantity}) — ${item.price} د.أ`)
+        .map((item: any) => `- ${item.name} (x${item.quantity}) - ${item.price} JD`)
         .join("\n");
 
       // 4a. Pushover notification
       if (pushoverToken && pushoverUser) {
         const itemsSummaryShort = newOrder.cartItems
-          .map((item: any) => `• ${item.name} (${item.quantity}x)`)
+          .map((item: any) => `* ${item.name} (${item.quantity}x)`)
           .join("\n");
 
-        const msgText = `طلب جديد بقيمة ${newOrder.total} د.أ!\n\n` +
-                        `الزبون: ${newOrder.customerName}\n` +
-                        `الهاتف: ${newOrder.customerPhone}\n` +
-                        `العنوان: ${newOrder.customerCity} - ${newOrder.customerAddress}\n\n` +
-                        `القطع المطلوبة:\n${itemsSummaryShort}`;
+        const msgText = `New order worth ${newOrder.total} JD!\n\n` +
+                        `Customer: ${newOrder.customerName}\n` +
+                        `Phone: ${newOrder.customerPhone}\n` +
+                        `Address: ${newOrder.customerCity} - ${newOrder.customerAddress}\n\n` +
+                        `Items:\n${itemsSummaryShort}`;
 
-        await fetch("https://api.pushover.net/1/messages.json", {
+        const pushRes = await fetch("https://api.pushover.net/1/messages.json", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             token: pushoverToken,
             user: pushoverUser,
-            title: `طلب جديد ${newOrder.id}`,
+            title: `New Order ${newOrder.id}`,
             message: msgText,
             priority: 1,
             sound: "onload",
           }),
         });
-        console.log("Pushover notification triggered successfully.");
+        console.log(`[Checkout] Pushover response: ${pushRes.status}`);
       }
 
       // 4b. Web3Forms email notification
       if (web3formsKey) {
-        const emailMessage =
-          `📦 طلب جديد وارد — ${newOrder.id}\n\n` +
-          `👤 الاسم: ${newOrder.customerName}\n` +
-          `📞 الهاتف: ${newOrder.customerPhone}\n` +
-          `🏙️ المدينة: ${newOrder.customerCity}\n` +
-          `📍 العنوان: ${newOrder.customerAddress}\n\n` +
-          `🛒 القطع المطلوبة:\n${itemsSummary}\n\n` +
-          `💰 المجموع الفرعي: ${newOrder.subtotal} د.أ\n` +
-          `🚚 رسوم الشحن: ${newOrder.shippingFee} د.أ\n` +
-          `💵 الإجمالي: ${newOrder.total} د.أ\n\n` +
-          `🕐 وقت الطلب: ${new Date(newOrder.createdAt).toLocaleString("ar-JO")}`;
+        const emailBody = [
+          `Order ID: ${newOrder.id}`,
+          ``,
+          `Customer Name: ${newOrder.customerName}`,
+          `Phone: ${newOrder.customerPhone}`,
+          `City: ${newOrder.customerCity}`,
+          `Address: ${newOrder.customerAddress}`,
+          ``,
+          `Items Ordered:`,
+          itemsSummary,
+          ``,
+          `Subtotal: ${newOrder.subtotal} JD`,
+          `Shipping: ${newOrder.shippingFee} JD`,
+          `Total: ${newOrder.total} JD`,
+          ``,
+          `Order Time: ${new Date(newOrder.createdAt).toISOString()}`,
+        ].join("\n");
 
-        await fetch("https://api.web3forms.com/submit", {
+        const w3fRes = await fetch("https://api.web3forms.com/submit", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -149,15 +165,25 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             access_key: web3formsKey,
-            subject: `🛒 طلب جديد ${newOrder.id} — ${newOrder.customerName} — ${newOrder.total} د.أ`,
-            from_name: "متجر الجارحي - إشعار طلب جديد",
-            message: emailMessage,
+            subject: `New Order ${newOrder.id} - ${newOrder.customerName} - ${newOrder.total} JD`,
+            from_name: "Aljarhee Store - New Order Alert",
+            message: emailBody,
           }),
         });
-        console.log("Web3Forms order email sent successfully.");
+
+        const w3fJson = await w3fRes.json().catch(() => ({}));
+        console.log(`[Checkout] Web3Forms response: ${w3fRes.status}`, JSON.stringify(w3fJson));
+
+        if (!w3fRes.ok) {
+          console.error("[Checkout] Web3Forms email FAILED:", w3fJson);
+        } else {
+          console.log("[Checkout] Web3Forms order email sent successfully.");
+        }
+      } else {
+        console.warn("[Checkout] web3formsKey is empty — no email notification sent.");
       }
     } catch (notifyErr) {
-      console.warn("Notification failed, but order was saved:", notifyErr);
+      console.warn("[Checkout] Notification failed, but order was saved:", notifyErr);
     }
 
     return NextResponse.json({ success: true, orderId: orderIdString });
