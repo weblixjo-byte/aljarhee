@@ -25,31 +25,78 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadProducts() {
-      // Load local storage category/brand/model settings immediately for quick UI response
-      if (typeof window !== "undefined") {
-        const localCats = localStorage.getItem("aljarhee_category_settings");
-        const localBrs = localStorage.getItem("aljarhee_brand_settings");
-        const localMdls = localStorage.getItem("aljarhee_model_settings");
-        if (localCats) {
-          try { setCategorySettings(JSON.parse(localCats)); } catch (e) {}
-        }
-        if (localBrs) {
-          try { setBrandSettings(JSON.parse(localBrs)); } catch (e) {}
-        }
-        if (localMdls) {
-          try { setModelSettings(JSON.parse(localMdls)); } catch (e) {}
-        }
-      }
+    // 1. Instantly load from localStorage or static files to populate the UI
+    let initialProducts: Product[] = [];
+    let initialCats: Record<string, string> = {};
+    let initialBrs: Record<string, string> = {};
+    let initialMdls: Record<string, string> = {};
 
+    if (typeof window !== "undefined") {
+      const localData = localStorage.getItem("aljarhee_imported_products");
+      const localCats = localStorage.getItem("aljarhee_category_settings");
+      const localBrs = localStorage.getItem("aljarhee_brand_settings");
+      const localMdls = localStorage.getItem("aljarhee_model_settings");
+
+      if (localCats) { try { initialCats = JSON.parse(localCats); } catch (e) {} }
+      if (localBrs) { try { initialBrs = JSON.parse(localBrs); } catch (e) {} }
+      if (localMdls) { try { initialMdls = JSON.parse(localMdls); } catch (e) {} }
+
+      if (localData) {
+        try {
+          const parsed = JSON.parse(localData);
+          initialProducts = parsed.filter((p: any) => p.id !== 0);
+          const settingsProduct = parsed.find((p: any) => p.id === 0);
+          if (settingsProduct && settingsProduct.description && Object.keys(initialCats).length === 0) {
+            try {
+              const parsedSettings = JSON.parse(settingsProduct.description);
+              initialCats = parsedSettings.categories || {};
+              initialBrs = parsedSettings.brands || {};
+              initialMdls = parsedSettings.models || {};
+            } catch (e) {}
+          }
+        } catch (e) {}
+      }
+    }
+
+    // Fallback to static JSON if localStorage is empty
+    if (initialProducts.length === 0) {
+      const staticImported = importedProductsStatic as Product[];
+      if (staticImported && staticImported.length > 0) {
+        initialProducts = staticImported.filter((p: any) => p.id !== 0);
+        const settingsProduct = staticImported.find((p: any) => p.id === 0);
+        if (settingsProduct && settingsProduct.description && Object.keys(initialCats).length === 0) {
+          try {
+            const parsedSettings = JSON.parse(settingsProduct.description);
+            initialCats = parsedSettings.categories || {};
+            initialBrs = parsedSettings.brands || {};
+            initialMdls = parsedSettings.models || {};
+          } catch (e) {}
+        }
+      } else {
+        initialProducts = productsData;
+      }
+    }
+
+    // Set state immediately
+    setProducts(initialProducts);
+    setCategorySettings(initialCats);
+    setBrandSettings(initialBrs);
+    setModelSettings(initialMdls);
+    setLoading(false); // Instantly turn off loading spinner!
+
+    // 2. Fetch fresh live data from database silently in the background
+    async function syncDatabaseInBackground() {
       try {
-        // 1. Try fetching from live database API (Supabase route)
         const res = await fetch("/api/products");
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
             const realProducts = data.filter((p: any) => p.id !== 0);
             const settingsProduct = data.find((p: any) => p.id === 0);
+            
+            setProducts(realProducts);
+            localStorage.setItem("aljarhee_imported_products", JSON.stringify(data));
+
             if (settingsProduct && settingsProduct.description) {
               try {
                 const parsed = JSON.parse(settingsProduct.description);
@@ -64,67 +111,16 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
                 localStorage.setItem("aljarhee_category_settings", JSON.stringify(cats));
                 localStorage.setItem("aljarhee_brand_settings", JSON.stringify(brs));
                 localStorage.setItem("aljarhee_model_settings", JSON.stringify(mdls));
-              } catch (e) {
-                console.error("Failed to parse database category settings:", e);
-              }
+              } catch (e) {}
             }
-            setProducts(realProducts);
-            setLoading(false);
-            return;
           }
         }
       } catch (err) {
-        console.warn("Failed to fetch live products from API, falling back:", err);
+        console.warn("Background db sync failed:", err);
       }
-
-      // 2. Local fallback if API is not active or empty
-      const localData = localStorage.getItem("aljarhee_imported_products");
-      if (localData) {
-        try {
-          const parsed = JSON.parse(localData);
-          const realProducts = parsed.filter((p: any) => p.id !== 0);
-          const settingsProduct = parsed.find((p: any) => p.id === 0);
-          if (settingsProduct && settingsProduct.description) {
-            try {
-              const parsedSettings = JSON.parse(settingsProduct.description);
-              setCategorySettings(parsedSettings.categories || {});
-              setBrandSettings(parsedSettings.brands || {});
-              setModelSettings(parsedSettings.models || {});
-            } catch (e) {
-              console.error("Failed to parse category settings from local storage:", e);
-            }
-          }
-          setProducts(realProducts);
-          setLoading(false);
-          return;
-        } catch (e) {
-          console.error("Failed to parse local storage products:", e);
-        }
-      }
-
-      // 3. Static fallback
-      const staticImported = importedProductsStatic as Product[];
-      if (staticImported && staticImported.length > 0) {
-        const realProducts = staticImported.filter((p: any) => p.id !== 0);
-        const settingsProduct = staticImported.find((p: any) => p.id === 0);
-        if (settingsProduct && settingsProduct.description) {
-          try {
-            const parsedSettings = JSON.parse(settingsProduct.description);
-            setCategorySettings(parsedSettings.categories || {});
-            setBrandSettings(parsedSettings.brands || {});
-            setModelSettings(parsedSettings.models || {});
-          } catch (e) {
-            console.error("Failed to parse static category settings:", e);
-          }
-        }
-        setProducts(realProducts);
-      } else {
-        setProducts(productsData);
-      }
-      setLoading(false);
     }
 
-    loadProducts();
+    syncDatabaseInBackground();
   }, []);
 
   const importProducts = (newProducts: Product[]) => {

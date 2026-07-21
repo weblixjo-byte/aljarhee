@@ -1,3 +1,4 @@
+import { SITE_URL } from "../../lib/config";
 import type { Metadata } from "next";
 import ContactClient from "./ContactClient";
 
@@ -14,13 +15,13 @@ export const metadata: Metadata = {
     "رقم شاصي سيارة استفسار",
   ],
   alternates: {
-    canonical: "https://aljarhi-parts.com/contact",
+    canonical: `${SITE_URL}/contact`,
   },
   openGraph: {
     title: "تواصل معنا - أرقام فروع متجر الجارحي لقطع السيارات | الجارحي",
     description:
       "تواصل مع فروعنا، أو أرسل رقم الشاصي لطلب القطعة ومطابقتها مباشرة عبر واتساب.",
-    url: "https://aljarhi-parts.com/contact",
+    url: `${SITE_URL}/contact`,
     siteName: "الجارحي لقطع غيار السيارات",
     locale: "ar_JO",
     type: "website",

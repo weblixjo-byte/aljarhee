@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { getProductsList } from "../../../lib/productsApi";
 import ProductDetailClient from "./ProductDetailClient";
 import { notFound } from "next/navigation";
+import { SITE_URL } from "../../../lib/config";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -61,22 +62,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const priceText = product.price > 0 ? `السعر: ${product.price} د.أ.` : "طلب السعر عند الاستفسار.";
   const description = `اشتري ${product.name} لسيارات ${brandName} ${product.model} موديل ${product.year} بجودة مضمونة وكفالة تشغيل حقيقية من مركز الجارحي في الأردن. ${priceText} كاش عند التوصيل.`;
 
+  // Get dynamic absolute image URL safely
+  const absoluteImageUrl = product.image
+    ? (product.image.startsWith("http")
+        ? product.image
+        : `${SITE_URL}${product.image.startsWith("/") ? "" : "/"}${product.image}`)
+    : `${SITE_URL}/assets/images/logo.png`;
+
   return {
     title,
     description,
     alternates: {
-      canonical: `https://aljarhi-parts.com/store/${product.id}`,
+      canonical: `${SITE_URL}/store/${product.id}`,
     },
     openGraph: {
       title,
       description,
-      url: `https://aljarhi-parts.com/store/${product.id}`,
+      url: `${SITE_URL}/store/${product.id}`,
+      siteName: "الجارحي لقطع غيار السيارات",
+      locale: "ar_JO",
       type: "website",
       images: [
         {
-          url: product.image.startsWith("http")
-            ? product.image
-            : `https://aljarhi-parts.com${product.image.startsWith("/") ? "" : "/"}${product.image}`,
+          url: absoluteImageUrl,
+          width: 800,
+          height: 800,
           alt: product.name,
         },
       ],
@@ -85,7 +95,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: "summary_large_image",
       title,
       description,
-      images: [product.image],
+      images: [absoluteImageUrl],
     },
   };
 }
@@ -100,6 +110,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const absoluteImageUrl = product.image
+    ? (product.image.startsWith("http")
+        ? product.image
+        : `${SITE_URL}${product.image.startsWith("/") ? "" : "/"}${product.image}`)
+    : `${SITE_URL}/assets/images/logo.png`;
+
   return (
     <>
       {/* ─── JSON-LD Structured Data Schema for Rich Google Search Snippets ─── */}
@@ -111,9 +127,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             "@type": "Product",
             name: product.name,
             description: product.description || product.name,
-            image: product.image.startsWith("http")
-              ? product.image
-              : `https://aljarhi-parts.com${product.image.startsWith("/") ? "" : "/"}${product.image}`,
+            image: absoluteImageUrl,
             sku: String(product.id),
             brand: {
               "@type": "Brand",
@@ -123,7 +137,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             },
             offers: {
               "@type": "Offer",
-              url: `https://aljarhi-parts.com/store/${product.id}`,
+              url: `${SITE_URL}/store/${product.id}`,
               priceCurrency: "JOD",
               price: product.price,
               priceValidUntil: new Date(

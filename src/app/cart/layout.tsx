@@ -1,3 +1,4 @@
+import { SITE_URL } from "../../lib/config";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
     googleBot: { index: false, follow: false },
   },
   alternates: {
-    canonical: "https://aljarhi-parts.com/cart",
+    canonical: `${SITE_URL}/cart`,
   },
 };
 

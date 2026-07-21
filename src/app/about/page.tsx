@@ -1,3 +1,4 @@
+import { SITE_URL } from "../../lib/config";
 import type { Metadata } from "next";
 import AboutClient from "./AboutClient";
 
@@ -15,13 +16,13 @@ export const metadata: Metadata = {
     "كفالة قطع سيارات الأردن",
   ],
   alternates: {
-    canonical: "https://aljarhi-parts.com/about",
+    canonical: `${SITE_URL}/about`,
   },
   openGraph: {
     title: "من نحن - قصة وتأسيس مركز الجارحي لقطع السيارات | الجارحي",
     description:
       "تأسس مركز الجارحي ليكون شريكك الموثوق لتأمين قطع غيار سيارات الهايبرد والكهرباء الأصلية بجودة مضمونة في الأردن.",
-    url: "https://aljarhi-parts.com/about",
+    url: `${SITE_URL}/about`,
     siteName: "الجارحي لقطع غيار السيارات",
     locale: "ar_JO",
     type: "website",

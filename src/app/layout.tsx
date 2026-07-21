@@ -3,6 +3,7 @@ import { Cairo, Outfit } from "next/font/google";
 import { ToastProvider } from "../context/ToastContext";
 import { ProductProvider } from "../context/ProductContext";
 import "./globals.css";
+import { SITE_URL } from "../lib/config";
 
 import ClientLayout from "../components/ClientLayout";
 
@@ -19,7 +20,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://aljarhi-parts.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "الجارحي لقطع غيار السيارات | Al-Jarhee Spare Parts",
     template: "%s | الجارحي لقطع غيار السيارات",
@@ -69,16 +70,16 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
   alternates: {
-    canonical: "https://aljarhi-parts.com",
+    canonical: SITE_URL,
     languages: {
-      "ar-JO": "https://aljarhi-parts.com",
+      "ar-JO": SITE_URL,
     },
   },
   openGraph: {
     title: "الجارحي لقطع غيار السيارات | Al-Jarhee Spare Parts",
     description:
       "التشكيلة الأضخم من قطع غيار محركات الهايبرد، الكهرباء، والميكانيك في الأردن. جودة مضمونة وكفالة حقيقية.",
-    url: "https://aljarhi-parts.com",
+    url: SITE_URL,
     siteName: "الجارحي لقطع غيار السيارات",
     locale: "ar_JO",
     type: "website",

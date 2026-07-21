@@ -1,3 +1,4 @@
+import { SITE_URL } from "../../lib/config";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -18,13 +19,13 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true },
   },
   alternates: {
-    canonical: "https://aljarhi-parts.com/about",
+    canonical: `${SITE_URL}/about`,
   },
   openGraph: {
     title: "من نحن | الجارحي لقطع غيار السيارات",
     description:
       "خبرة تمتد لأكثر من 15 عاماً في توفير قطع غيار سيارات أصلية ومضمونة في الأردن. معرضنا في البيادر، عمان.",
-    url: "https://aljarhi-parts.com/about",
+    url: `${SITE_URL}/about`,
     siteName: "الجارحي لقطع غيار السيارات",
     locale: "ar_JO",
     type: "website",

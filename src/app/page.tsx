@@ -8,6 +8,7 @@ import BrandsMarquee from "../components/BrandsMarquee";
 import { useToast } from "../context/ToastContext";
 import { productsData, Product, getProductCategory } from "../data/products";
 import { useProducts } from "../context/ProductContext";
+import { SITE_URL } from "../lib/config";
 import { 
   Sparkles, 
   Flame, 
@@ -178,13 +179,13 @@ export default function Home() {
             "@graph": [
               {
                 "@type": "Organization",
-                "@id": "https://aljarhi-parts.com/#organization",
+                "@id": `${SITE_URL}/#organization`,
                 name: "الجارحي لقطع غيار السيارات",
                 alternateName: "Aljarhi Car Spare Parts",
-                url: "https://aljarhi-parts.com",
+                url: SITE_URL,
                 logo: {
                   "@type": "ImageObject",
-                  url: "https://aljarhi-parts.com/assets/images/logo.png",
+                  url: `${SITE_URL}/assets/images/logo.png`,
                   width: 1080,
                   height: 1080,
                 },
@@ -198,10 +199,10 @@ export default function Home() {
               },
               {
                 "@type": "LocalBusiness",
-                "@id": "https://aljarhi-parts.com/#localbusiness",
+                "@id": `${SITE_URL}/#localbusiness`,
                 name: "الجارحي لقطع غيار السيارات",
-                image: "https://aljarhi-parts.com/assets/images/logo.png",
-                url: "https://aljarhi-parts.com",
+                image: `${SITE_URL}/assets/images/logo.png`,
+                url: SITE_URL,
                 telephone: "+962799123456",
                 priceRange: "$$",
                 address: {
@@ -226,15 +227,15 @@ export default function Home() {
               },
               {
                 "@type": "WebSite",
-                "@id": "https://aljarhi-parts.com/#website",
-                url: "https://aljarhi-parts.com",
+                "@id": `${SITE_URL}/#website`,
+                url: SITE_URL,
                 name: "الجارحي لقطع غيار السيارات",
-                publisher: { "@id": "https://aljarhi-parts.com/#organization" },
+                publisher: { "@id": `${SITE_URL}/#organization` },
                 potentialAction: {
                   "@type": "SearchAction",
                   target: {
                     "@type": "EntryPoint",
-                    urlTemplate: "https://aljarhi-parts.com/store?q={search_term_string}",
+                    urlTemplate: `${SITE_URL}/store?q={search_term_string}`,
                   },
                   "query-input": "required name=search_term_string",
                 },

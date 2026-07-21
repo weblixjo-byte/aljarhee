@@ -1,4 +1,5 @@
 import { MetadataRoute } from "next";
+import { SITE_URL } from "../lib/config";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -15,7 +16,7 @@ export default function robots(): MetadataRoute.Robots {
         crawlDelay: 2,
       },
     ],
-    sitemap: "https://aljarhi-parts.com/sitemap.xml",
-    host: "https://aljarhi-parts.com",
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   };
 }

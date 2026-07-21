@@ -1,3 +1,4 @@
+import { SITE_URL } from "../../lib/config";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Cpu, Wrench, FileText, CheckCircle2, Shield, Clock, HelpCircle, Phone } from "lucide-react";
@@ -21,13 +22,13 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true },
   },
   alternates: {
-    canonical: "https://aljarhi-parts.com/services",
+    canonical: `${SITE_URL}/services`,
   },
   openGraph: {
     title: "خدماتنا - فحص الكمبيوتر وتشخيص الأعطال | الجارحي",
     description:
       "فحص كمبيوتر متكامل، تشخيص دقيق للأعطال، وتقرير مطبوع شامل لسيارتك. خدماتنا في عمان، الأردن.",
-    url: "https://aljarhi-parts.com/services",
+    url: `${SITE_URL}/services`,
     siteName: "الجارحي لقطع غيار السيارات",
     locale: "ar_JO",
     type: "website",

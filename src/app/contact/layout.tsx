@@ -1,3 +1,4 @@
+import { SITE_URL } from "../../lib/config";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -18,13 +19,13 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true },
   },
   alternates: {
-    canonical: "https://aljarhi-parts.com/contact",
+    canonical: `${SITE_URL}/contact`,
   },
   openGraph: {
     title: "تواصل معنا | الجارحي لقطع غيار السيارات",
     description:
       "تواصل مع الجارحي عبر الهاتف أو الواتساب أو زرنا في معرضنا بالبيادر، عمان. نحن هنا لخدمتك.",
-    url: "https://aljarhi-parts.com/contact",
+    url: `${SITE_URL}/contact`,
     siteName: "الجارحي لقطع غيار السيارات",
     locale: "ar_JO",
     type: "website",

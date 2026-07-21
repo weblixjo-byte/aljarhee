@@ -101,6 +101,7 @@ function StoreContent() {
   const [currentPage, setCurrentPage] = useState(1);
 
   // Synchronise with URL parameters if loaded directly
+  // Synchronise with URL parameters if loaded directly or on back navigation
   useEffect(() => {
     const brandParam = searchParams.get("brand");
     const modelParam = searchParams.get("model");
@@ -108,11 +109,11 @@ function StoreContent() {
     const categoryParam = searchParams.get("category");
     const queryParam = searchParams.get("query");
 
-    if (brandParam) setSelectedBrand(brandParam);
-    if (modelParam) setSelectedModel(modelParam);
-    if (yearParam) setSelectedYear(yearParam);
-    if (categoryParam) setSelectedCategory(categoryParam);
-    if (queryParam) setSearchQuery(queryParam);
+    setSelectedBrand(brandParam);
+    setSelectedModel(modelParam);
+    setSelectedYear(yearParam);
+    setSelectedCategory(categoryParam);
+    setSearchQuery(queryParam || "");
   }, [searchParams]);
 
   if (loading) {
@@ -331,88 +332,91 @@ function StoreContent() {
   if (isSearchActive) step = 3;
 
   return (
-    <div className="min-h-screen bg-white font-sans pb-24 pt-[80px]" dir="rtl">
+    <div className="min-h-screen bg-white font-sans pb-24" dir="rtl">
       
-      {/* ── World-Class Minimalist Header ── */}
-      <div className="bg-white py-16 text-center mb-10">
-        <div className="max-w-4xl mx-auto px-4">
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-3 text-slate-900 leading-tight">
-            كتالوج قطع الغيار الأصلي
-          </h1>
-          <p className="text-slate-400 text-xs sm:text-xs font-bold leading-relaxed max-w-lg mx-auto mb-8">
-            تصفح أو ابحث مباشرة للوصول إلى قطع غيار البودي، الكهرباء، والميكانيك الملائمة لسيارتك بدقة.
-          </p>
+      {/* ── World-Class Dark Hero Banner ── */}
+      <div 
+        className="relative py-20 text-center mb-10 mt-[80px] bg-cover bg-center overflow-hidden"
+        style={{ backgroundImage: `url('/assets/images/about_store_interior.webp')` }}
+      >
+        {/* Heavy Dark Overlay */}
+        <div className="absolute inset-0 bg-black/75 z-0" />
 
-          {/* Clean SaaS-Style Search Input */}
-          <div className="max-w-md mx-auto relative px-4">
-            <input
-              type="text"
-              placeholder="ابحث بالاسم، الرقم، أو الموديل (مثال: حساس، بريوس...)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 hover:bg-slate-100/50 text-slate-800 rounded-2xl py-3.5 pr-11 pl-4 text-xs font-bold border border-slate-200/80 focus:border-[#ffc72c] focus:bg-white focus:ring-4 focus:ring-[#ffc72c]/10 shadow-xs font-sans outline-none text-right placeholder-slate-400 transition-all duration-300"
-            />
-            <Search className="absolute top-1/2 right-7.5 -translate-y-1/2 text-slate-400" size={16} />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute top-1/2 left-7.5 -translate-y-1/2 text-slate-400 hover:text-slate-650 bg-slate-200/50 rounded-lg p-1 border-0 cursor-pointer transition-colors"
-              >
-                <X size={12} />
-              </button>
-            )}
+        <div className="relative z-10 max-w-4xl mx-auto px-4 flex flex-col items-center justify-center gap-2">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
+            المتجر
+          </h1>
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-350" dir="rtl">
+            <Link href="/" className="hover:text-[#ffc72c] transition-colors text-slate-350 decoration-none">الرئيسية</Link>
+            <span className="text-slate-500">/</span>
+            <span className="text-white">المتجر</span>
           </div>
         </div>
       </div>
 
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* ── Modern Dynamic Stepper (Open Layout) ── */}
+        {/* ── World-Class Minimalist Breadcrumbs Navigation ── */}
         {!isSearchActive && (
-          <div className="max-w-2xl mx-auto flex items-center justify-between py-6 mb-12 relative select-none" dir="rtl">
-            {/* Connecting Line Background */}
-            <div className="absolute top-[21px] left-8 right-8 h-0.5 bg-slate-200/70 -z-10 rounded-full" />
-            {/* Connecting Line Progress */}
-            <div 
-              className="absolute top-[21px] right-8 h-0.5 bg-[#ffc72c] -z-10 rounded-full transition-all duration-500" 
-              style={{ width: `${(step / 3) * 100}%`, left: 'auto' }}
-            />
-            
-            {/* Steps */}
-            {[
-              { index: 0, label: "نوع السيارة" },
-              { index: 1, label: "الموديل والسنة" },
-              { index: 2, label: "القسم الرئيسي" },
-              { index: 3, label: "تصفح القطع" }
-            ].map((s) => {
-              const isCompleted = step > s.index;
-              const isActive = step === s.index;
-              return (
-                <div key={s.index} className="flex flex-col items-center gap-2.5 text-center">
-                  <button
-                    type="button"
-                    disabled={s.index > step && !isCompleted}
-                    onClick={() => {
-                      if (s.index === 0) resetAll();
-                      else if (s.index === 1 && selectedBrand) { setSelectedModel(null); setSelectedYear(null); setSelectedCategory(null); }
-                      else if (s.index === 2 && selectedModel) { setSelectedCategory(null); }
-                    }}
-                    className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black transition-all border-2 cursor-pointer outline-none shadow-xs ${
-                      isActive
-                        ? "bg-[#ffc72c] border-[#ffc72c] text-slate-900 ring-4 ring-[#ffc72c]/15 scale-110"
-                        : isCompleted
-                          ? "bg-[#ffc72c]/10 border-[#ffc72c] text-[#e0a61b]"
-                          : "bg-white border-slate-200 text-slate-400 disabled:cursor-not-allowed"
-                    }`}
-                  >
-                    {isCompleted ? "✓" : s.index + 1}
-                  </button>
-                  <span className={`text-[10px] font-black tracking-wide ${isActive ? "text-[#e0a61b]" : isCompleted ? "text-slate-800" : "text-slate-400"}`}>
-                    {s.label}
-                  </span>
-                </div>
-              );
-            })}
+          <div className="flex items-center justify-center flex-wrap gap-2.5 py-4 mb-8 text-[11px] font-black text-slate-400 select-none bg-slate-50/60 px-6 py-3 rounded-2xl max-w-xl mx-auto border border-slate-100/50" dir="rtl">
+            {/* Step 0: main category/brand selection */}
+            <button
+              type="button"
+              onClick={resetAll}
+              className={`hover:text-[#e0a61b] transition-colors cursor-pointer border-0 bg-transparent font-black ${
+                step === 0 ? "text-amber-600 bg-amber-50/70 px-3 py-1.5 rounded-lg border border-amber-100" : "text-slate-500"
+              }`}
+            >
+              الرئيسية
+            </button>
+
+            {/* Step 1: Brand selected */}
+            {selectedBrand && (
+              <>
+                <ChevronLeft className="text-slate-300 shrink-0" size={13} />
+                <button
+                  type="button"
+                  onClick={() => router.push(`/store?brand=${selectedBrand}`)}
+                  disabled={step === 1}
+                  className={`transition-colors cursor-pointer border-0 bg-transparent font-black ${
+                    step === 1 
+                      ? "text-amber-600 bg-amber-50/70 px-3 py-1.5 rounded-lg border border-amber-100" 
+                      : "text-slate-500 hover:text-[#e0a61b] disabled:cursor-default"
+                  }`}
+                >
+                  {dynamicBrands.find((b) => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}
+                </button>
+              </>
+            )}
+
+            {/* Step 2: Model & Year selected */}
+            {selectedBrand && selectedModel && selectedYear && (
+              <>
+                <ChevronLeft className="text-slate-300 shrink-0" size={13} />
+                <button
+                  type="button"
+                  onClick={() => router.push(`/store?brand=${selectedBrand}&model=${encodeURIComponent(selectedModel)}&year=${encodeURIComponent(selectedYear)}`)}
+                  disabled={step === 2}
+                  className={`transition-colors cursor-pointer border-0 bg-transparent font-black ${
+                    step === 2 
+                      ? "text-amber-600 bg-amber-50/70 px-3 py-1.5 rounded-lg border border-amber-100" 
+                      : "text-slate-500 hover:text-[#e0a61b] disabled:cursor-default"
+                  }`}
+                >
+                  {selectedModel} ({selectedYear})
+                </button>
+              </>
+            )}
+
+            {/* Step 3: Category selected */}
+            {selectedBrand && selectedModel && selectedYear && selectedCategory && (
+              <>
+                <ChevronLeft className="text-slate-300 shrink-0" size={13} />
+                <span className="text-amber-600 bg-amber-50/70 px-3 py-1.5 rounded-lg border border-amber-100 font-black">
+                  {selectedCategory}
+                </span>
+              </>
+            )}
           </div>
         )}
 
@@ -553,7 +557,7 @@ function StoreContent() {
                 </span>
               </div>
               <button
-                onClick={() => { setSelectedModel(null); setSelectedYear(null); }}
+                onClick={() => router.push(`/store?brand=${selectedBrand}`)}
                 className="flex items-center gap-1 text-slate-400 hover:text-[#2d7a1f] font-bold text-xs bg-slate-50 px-3.5 py-2 rounded-xl border-0 cursor-pointer transition-all"
               >
                 <span>تغيير الموديل</span>
@@ -638,7 +642,7 @@ function StoreContent() {
                     <div className="flex items-center justify-between bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl text-xs font-black text-slate-700">
                       <span>{dynamicBrands.find((b) => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}</span>
                       <button
-                        onClick={() => { setSelectedBrand(null); setSelectedModel(null); setSelectedYear(null); setSelectedCategory(null); }}
+                        onClick={resetAll}
                         className="text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0.5 transition-colors"
                       >
                         <X size={13} />
@@ -654,7 +658,7 @@ function StoreContent() {
                     <div className="flex items-center justify-between bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl text-xs font-black text-slate-700">
                       <span>{selectedModel} {selectedYear}</span>
                       <button
-                        onClick={() => { setSelectedModel(null); setSelectedYear(null); setSelectedCategory(null); }}
+                        onClick={() => router.push(`/store?brand=${selectedBrand}`)}
                         className="text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0.5 transition-colors"
                       >
                         <X size={13} />
@@ -670,7 +674,7 @@ function StoreContent() {
                     <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-xl text-xs font-black text-[#2d7a1f]">
                       <span>{selectedCategory}</span>
                       <button
-                        onClick={() => setSelectedCategory(null)}
+                        onClick={() => router.push(`/store?brand=${selectedBrand}&model=${encodeURIComponent(selectedModel || "")}&year=${encodeURIComponent(selectedYear || "")}`)}
                         className="text-emerald-450 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0.5 transition-colors"
                       >
                         <X size={13} />

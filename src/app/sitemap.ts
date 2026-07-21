@@ -1,8 +1,9 @@
 import { MetadataRoute } from "next";
 import { getProductsList } from "../lib/productsApi";
+import { SITE_URL } from "../lib/config";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://aljarhi-parts.com";
+  const baseUrl = SITE_URL;
 
   // Fetch all active products (Supabase + fallbacks)
   const allProducts = await getProductsList();

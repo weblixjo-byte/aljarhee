@@ -1,3 +1,4 @@
+import { SITE_URL } from "../../lib/config";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -22,13 +23,13 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true },
   },
   alternates: {
-    canonical: "https://aljarhi-parts.com/store",
+    canonical: `${SITE_URL}/store`,
   },
   openGraph: {
     title: "متجر قطع غيار السيارات | الجارحي",
     description:
       "أضخم تشكيلة قطع غيار السيارات في الأردن. تويوتا، كيا، هيونداي، فورد وأكثر. جودة مضمونة وأسعار حصرية.",
-    url: "https://aljarhi-parts.com/store",
+    url: `${SITE_URL}/store`,
     siteName: "الجارحي لقطع غيار السيارات",
     locale: "ar_JO",
     type: "website",
