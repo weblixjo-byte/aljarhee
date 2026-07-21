@@ -178,26 +178,82 @@ export default function AdminPage() {
     }));
   };
 
+  const uploadExternalImageUrlIfNeeded = async (url: string): Promise<string> => {
+    if (!url || typeof url !== "string") return "";
+    const cleanUrl = url.trim();
+    if (
+      cleanUrl.includes("wohmrmlthkmxkebmupdn.supabase.co") ||
+      cleanUrl.startsWith("/") ||
+      cleanUrl.startsWith("data:") ||
+      !cleanUrl.startsWith("http")
+    ) {
+      return cleanUrl;
+    }
+
+    try {
+      const res = await fetch("/api/admin/upload-external-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: cleanUrl }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.url) {
+          return data.url;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to upload external image to local storage:", e);
+    }
+    return cleanUrl;
+  };
+
   const handleSaveAllImages = async () => {
     setIsSavingCategoryImages(true);
-    const finalSettings = {
-      categories: {
-        ...categorySettings,
-        ...tempCategoryImages
-      },
-      brands: {
-        ...brandSettings,
-        ...tempBrandLogos
-      },
-      models: {
-        ...modelSettings,
-        ...tempModelImages
+    
+    // Convert any external URLs to Supabase-stored URLs on the fly
+    const uploadedCategories: Record<string, string> = {};
+    const uploadedBrands: Record<string, string> = {};
+    const uploadedModels: Record<string, string> = {};
+
+    const catKeys = Object.keys({ ...categorySettings, ...tempCategoryImages });
+    for (const key of catKeys) {
+      const val = tempCategoryImages[key] !== undefined ? tempCategoryImages[key] : categorySettings[key];
+      if (val) {
+        uploadedCategories[key] = await uploadExternalImageUrlIfNeeded(val);
       }
+    }
+
+    const brandKeys = Object.keys({ ...brandSettings, ...tempBrandLogos });
+    for (const key of brandKeys) {
+      const val = tempBrandLogos[key] !== undefined ? tempBrandLogos[key] : brandSettings[key];
+      if (val) {
+        uploadedBrands[key] = await uploadExternalImageUrlIfNeeded(val);
+      }
+    }
+
+    const modelKeys = Object.keys({ ...modelSettings, ...tempModelImages });
+    for (const key of modelKeys) {
+      const val = tempModelImages[key] !== undefined ? tempModelImages[key] : modelSettings[key];
+      if (val) {
+        uploadedModels[key] = await uploadExternalImageUrlIfNeeded(val);
+      }
+    }
+
+    const finalSettings = {
+      categories: uploadedCategories,
+      brands: uploadedBrands,
+      models: uploadedModels
     };
+
     const success = await saveCategorySettings(finalSettings);
     setIsSavingCategoryImages(false);
     if (success) {
-      showToast("تم حفظ التعديلات بنجاح ومزامنتها مع المتجر!", "success");
+      // Clear temp states to sync
+      setTempCategoryImages({});
+      setTempBrandLogos({});
+      setTempModelImages({});
+      showToast("تم حفظ التعديلات وتأمين استضافة الصور بنجاح!", "success");
     } else {
       showToast("حدث خطأ أثناء حفظ التعديلات. يرجى التحقق من الشبكة.", "error");
     }
@@ -315,12 +371,16 @@ export default function AdminPage() {
     try {
       if (!supabase) throw new Error("Supabase is not initialized");
 
+      const hostedJobImage = newJobImage.trim()
+        ? await uploadExternalImageUrlIfNeeded(newJobImage.trim())
+        : null;
+
       const newJob = {
         title: newJobTitle.trim(),
         location: newJobLocation.trim(),
         description: newJobDesc.trim(),
         requirements: newJobReqs.trim() || null,
-        image: newJobImage.trim() || null,
+        image: hostedJobImage,
       };
 
       const { error } = await supabase
