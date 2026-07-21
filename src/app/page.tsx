@@ -36,7 +36,7 @@ import {
 
 export default function Home() {
   const { showToast } = useToast();
-  const { products } = useProducts();
+  const { products, loading } = useProducts();
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [selectedHomeCategory, setSelectedHomeCategory] = useState("all");
   const [randomHomeProducts, setRandomHomeProducts] = useState<Product[]>([]);
@@ -292,6 +292,25 @@ export default function Home() {
 
             {/* Category Products Grid (Exact 6 products) */}
             {(() => {
+              if (loading) {
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className="bg-white rounded-3xl border border-slate-100 p-4 flex flex-col gap-4 animate-pulse">
+                        <div className="w-full aspect-square bg-slate-50 rounded-2xl animate-pulse" />
+                        <div className="h-3 bg-slate-100 rounded-md w-1/4" />
+                        <div className="h-4 bg-slate-100 rounded-md w-3/4" />
+                        <div className="h-3 bg-slate-100 rounded-md w-1/2" />
+                        <div className="flex justify-between items-center mt-auto pt-3 border-t border-slate-50">
+                          <div className="h-5 bg-slate-100 rounded-md w-1/4" />
+                          <div className="w-8 h-8 bg-slate-100 rounded-xl" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+
               const filteredList = selectedHomeCategory === "all"
                 ? randomHomeProducts
                 : products.filter(p => getProductCategory(p) === selectedHomeCategory).slice(0, 6);

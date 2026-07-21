@@ -88,10 +88,21 @@ const BRANDS = [
 ];
 
 function StoreContent() {
-  const { products, categorySettings, brandSettings, modelSettings } = useProducts();
+  const { products, categorySettings, brandSettings, modelSettings, loading } = useProducts();
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center bg-[#f8fafc] font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-slate-200 border-t-[#2d7a1f] rounded-full animate-spin" />
+          <span className="text-slate-400 text-xs font-bold font-sans">جاري تحميل كتالوج المنتجات...</span>
+        </div>
+      </div>
+    );
+  }
 
   // Wizard state variables
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
