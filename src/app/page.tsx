@@ -104,22 +104,22 @@ export default function Home() {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Auto-play video with sound when it enters viewport, pause when scrolled away
+  // Auto-play video when it enters viewport, pause when scrolled away (optimized for iOS/Android mobile browsers)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    // Explicitly set muted on mount to satisfy Safari/mobile autoplay policies
+    video.muted = true;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            // Unmute and play
-            video.muted = false;
+            // Always autoplay as muted to bypass browser audio policies
+            video.muted = true;
             video.play().catch((err) => {
-              console.log("Autoplay with sound blocked, playing muted as fallback:", err);
-              // Fallback: play muted if browser blocks sound auto-play
-              video.muted = true;
-              video.play().catch((e) => console.error("Error playing video:", e));
+              console.log("Autoplay failed:", err);
             });
           } else {
             // Pause when scrolled out of view
@@ -128,7 +128,7 @@ export default function Home() {
         });
       },
       {
-        threshold: 0.3, // Trigger when 30% of the video is visible
+        threshold: 0.1, // Trigger when 10% of the video is visible
       }
     );
 
@@ -398,6 +398,9 @@ export default function Home() {
                 className="w-full h-full object-cover"
                 loop
                 playsInline
+                muted
+                autoPlay
+                preload="auto"
                 controls
               />
             </div>
