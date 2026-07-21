@@ -531,6 +531,13 @@ export default function AdminPage() {
 
         const mappedProducts: any[] = [];
 
+        // Track running divider metadata for cases where columns are not specified per-row (e.g. Book1.xlsx)
+        let currentBrand = "all";
+        let currentModel = "all";
+        let currentYear = "all";
+        let currentCategory = "all";
+        let currentCategoryName = "جميع القطع";
+
         // Helper to check if a row is a header row
         const isHeaderRow = (row: any[]) => {
           if (!Array.isArray(row) || row.length === 0) return false;
@@ -603,7 +610,7 @@ export default function AdminPage() {
             ) {
               colIndices.image = idx;
             }
-            // Onsale
+            // On Sale
             else if (val === "onsale" || val === "discount" || val === "sale" || val === "خصم") {
               colIndices.onsale = idx;
             }
@@ -626,12 +633,77 @@ export default function AdminPage() {
           });
         };
 
+        // Helper to check if a row is a divider row and update running category/car metadata
+        const checkAndParseDividerRow = (r: any[]) => {
+          const nonEmpties = r.filter(cell => cell !== undefined && cell !== null && String(cell).trim() !== "");
+          if (nonEmpties.length > 0 && nonEmpties.length <= 2) {
+            const text = String(nonEmpties[0]).trim();
+            
+            const hasCatKeywords = ["بودي", "body", "كهرباء", "كهربا", "electrical", "ميكانيك", "mechanical", "قطع", "غيار"].some(kw => text.includes(kw));
+            const hasCarKeywords = ["تويوتا", "toyota", "بريوس", "prius", "لكزس", "lexus", "نيسان", "nissan", "فورد", "ford", "سيفيك", "سنترا", "سوناتا", "كامري", "اوبتيما", "النترا"].some(kw => text.includes(kw));
+            const hasNumbers = /d+/.test(text);
+
+            if (hasCatKeywords || hasCarKeywords || hasNumbers) {
+              // Parse category
+              if (text.includes("بودي") || text.includes("body")) {
+                currentCategory = "body";
+                currentCategoryName = "قطع بودي";
+              } else if (text.includes("كهرباء") || text.includes("كهربا") || text.includes("electrical")) {
+                currentCategory = "electrical";
+                currentCategoryName = "قطع كهرباء";
+              } else if (text.includes("ميكانيك") || text.includes("mechanical")) {
+                currentCategory = "mechanical";
+                currentCategoryName = "قطع ميكانيك";
+              }
+
+              // Parse brand & model
+              if (text.includes("بريوس") || text.includes("prius")) {
+                currentBrand = "toyota";
+                currentModel = "بريوس";
+              } else if (text.includes("تويوتا") || text.includes("toyota")) {
+                currentBrand = "toyota";
+              } else if (text.includes("لكزس") || text.includes("lexus")) {
+                currentBrand = "lexus";
+              } else if (text.includes("نيسان") || text.includes("nissan")) {
+                currentBrand = "nissan";
+              } else if (text.includes("فورد") || text.includes("ford")) {
+                currentBrand = "ford";
+              }
+
+              // Parse year ranges
+              const rangeMatch = text.match(/(20\d{2})\s*[-/]\s*(20\d{2})/);
+              if (rangeMatch) {
+                currentYear = `${rangeMatch[1]}-${rangeMatch[2]}`;
+              } else {
+                const shortRangeMatch = text.match(/\b(\d{2})\s*[-/ ]\s*(\d{2})\b/);
+                if (shortRangeMatch) {
+                  const y1 = parseInt(shortRangeMatch[1]);
+                  const y2 = parseInt(shortRangeMatch[2]);
+                  currentYear = `20${y1 < 10 ? '0' + y1 : y1}-20${y2 < 10 ? '0' + y2 : y2}`;
+                } else {
+                  const singleMatch = text.match(/\b(20\d{2})\b/);
+                  if (singleMatch) {
+                    currentYear = singleMatch[1];
+                  }
+                }
+              }
+              return true;
+            }
+          }
+          return false;
+        };
+
         rawRows.forEach((row, idx) => {
           if (!Array.isArray(row) || row.length === 0) return;
 
           // Check if it is a header row
           if (isHeaderRow(row)) {
             updateColIndices(row);
+            return;
+          }
+
+          // Check if it is a section divider row (e.g. "بودي بريوس 2004 - 2009")
+          if (checkAndParseDividerRow(row)) {
             return;
           }
 
@@ -678,19 +750,24 @@ export default function AdminPage() {
             return s;
           };
 
-          const finalBrand = cleanValue(rawBrand) ? mapBrand(cleanValue(rawBrand)) : "all";
-          const finalModel = cleanValue(rawModel) ? String(cleanValue(rawModel)).trim() : "all";
-          const finalYear = cleanValue(rawYear) ? String(cleanValue(rawYear)).trim() : "all";
+          const cleanedBrand = cleanValue(rawBrand);
+          const finalBrand = cleanedBrand ? mapBrand(cleanedBrand) : currentBrand;
+
+          const cleanedModel = cleanValue(rawModel);
+          const finalModel = cleanedModel ? String(cleanedModel).trim() : currentModel;
+
+          const cleanedYear = cleanValue(rawYear);
+          const finalYear = cleanedYear ? String(cleanedYear).trim() : currentYear;
 
           // Parse prices
           const onsaleRaw = colIndices.onsale !== -1 ? row[colIndices.onsale] : "";
           const onsaleVal = parseFloat(String(onsaleRaw)) || 0;
 
           const origPriceRaw = colIndices.originalPrice !== -1 ? row[colIndices.originalPrice] : "";
-          const originalPrice = parseFloat(String(origPriceRaw).replace(/[^\d.]/g, "")) || 0;
+          const originalPrice = parseFloat(String(origPriceRaw).replace(/[^d.]/g, "")) || 0;
 
           const priceRaw = colIndices.price2 !== -1 ? row[colIndices.price2] : "";
-          let price = parseFloat(String(priceRaw || "").replace(/[^\d.]/g, "")) || 0;
+          let price = parseFloat(String(priceRaw || "").replace(/[^d.]/g, "")) || 0;
 
           if (price <= 0 && originalPrice > 0) {
             if (onsaleVal < 0) {
@@ -706,8 +783,9 @@ export default function AdminPage() {
           const imageUrl = String(imageUrlRaw || "").trim();
 
           // Map Category
-          let finalCategory = "all";
-          let finalCategoryName = "جميع القطع";
+          let finalCategory = currentCategory;
+          let finalCategoryName = currentCategoryName;
+
           if (categoryText && !categoryText.startsWith("http")) {
             if (categoryText.includes("بودي") || categoryText.includes("body")) {
               finalCategory = "body";
@@ -718,7 +796,7 @@ export default function AdminPage() {
             } else if (categoryText.includes("ميكانيك") || categoryText.includes("mechanical")) {
               finalCategory = "mechanical";
               finalCategoryName = "قطع ميكانيك";
-            } else {
+            } else if (categoryText !== "جميع القطع" && categoryText !== "وصل حديثاً" && categoryText !== "أحدث العروض") {
               finalCategory = mapCategory(categoryText);
               finalCategoryName = categoryText;
             }
