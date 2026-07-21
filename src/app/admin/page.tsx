@@ -1455,50 +1455,37 @@ export default function AdminPage() {
                   />
                 </div>
 
-                {/* Image Upload */}
-                <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <label className="text-xs font-black text-slate-700">صورة الإعلان <span className="text-slate-400 font-medium">(اختياري)</span></label>
-                  <div className="flex items-center gap-3">
-                    <label
-                      htmlFor="job-image-upload"
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed text-xs font-black cursor-pointer transition-all ${
-                        isUploadingJobImage
-                          ? "border-slate-300 text-slate-400 bg-slate-50"
-                          : "border-brand-green/40 text-brand-green bg-brand-green/5 hover:bg-brand-green/10"
-                      }`}
-                    >
-                      {isUploadingJobImage ? (
-                        <><Loader2 size={14} className="animate-spin" /><span>جاري الرفع...</span></>
-                      ) : (
-                        <><ArrowDownToLine size={14} /><span>رفع صورة</span></>
-                      )}
-                      <input
-                        id="job-image-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleJobImageUpload}
-                        disabled={isUploadingJobImage}
-                      />
-                    </label>
-                    {newJobImage && (
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={newJobImage}
-                          alt="معاينة"
-                          className="w-14 h-14 object-cover rounded-xl border border-slate-200 shadow-xs"
+                {/* Image Link Input */}
+                <div className="flex flex-col gap-1.5 md:col-span-2 text-right">
+                  <label className="text-xs font-black text-slate-700">رابط صورة الإعلان <span className="text-slate-400 font-medium">(اختياري)</span></label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newJobImage}
+                      onChange={(e) => setNewJobImage(e.target.value)}
+                      placeholder="أدخل رابط صورة الإعلان (مثال: https://...)"
+                      className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 focus:border-brand-green focus:outline-none text-xs font-en text-right font-sans"
+                    />
+                    <div className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                      {newJobImage ? (
+                        <img 
+                          src={newJobImage} 
+                          alt="معاينة" 
+                          className="w-full h-full object-cover" 
+                          onError={(e) => { e.currentTarget.src = "/assets/images/placeholder-product.png"; }} 
                         />
-                        <button
-                          type="button"
-                          onClick={() => setNewJobImage("")}
-                          className="text-red-500 hover:text-red-700 bg-red-50 border border-red-100 rounded-lg p-1.5 transition-colors"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    )}
-                    {!newJobImage && !isUploadingJobImage && (
-                      <span className="text-xs text-slate-400 font-bold">لم يتم اختيار صورة</span>
+                      ) : (
+                        <Layers size={14} className="text-slate-400" />
+                      )}
+                    </div>
+                    {newJobImage && (
+                      <button
+                        type="button"
+                        onClick={() => setNewJobImage("")}
+                        className="text-red-500 hover:text-red-700 bg-red-50 border border-red-100 rounded-xl px-2.5 transition-colors cursor-pointer"
+                      >
+                        مسح
+                      </button>
                     )}
                   </div>
                 </div>

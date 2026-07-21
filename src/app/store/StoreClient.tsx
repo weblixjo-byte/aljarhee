@@ -332,10 +332,10 @@ function StoreContent() {
   if (isSearchActive) step = 3;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans pb-24 pt-[80px]" dir="rtl">
+    <div className="min-h-screen bg-white font-sans pb-24 pt-[80px]" dir="rtl">
       
       {/* ── World-Class Minimalist Header ── */}
-      <div className="bg-white border-b border-slate-100 py-16 text-center mb-10">
+      <div className="bg-white py-16 text-center mb-10">
         <div className="max-w-4xl mx-auto px-4">
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-3 text-slate-900 leading-tight">
             كتالوج قطع الغيار الأصلي
@@ -351,7 +351,7 @@ function StoreContent() {
               placeholder="ابحث بالاسم، الرقم، أو الموديل (مثال: حساس، بريوس...)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 hover:bg-slate-100/50 text-slate-800 rounded-2xl py-3.5 pr-11 pl-4 text-xs font-bold border border-slate-200/80 focus:border-[#2d7a1f] focus:bg-white focus:ring-4 focus:ring-[#2d7a1f]/5 shadow-xs font-sans outline-none text-right placeholder-slate-400 transition-all duration-300"
+              className="w-full bg-slate-50 hover:bg-slate-100/50 text-slate-800 rounded-2xl py-3.5 pr-11 pl-4 text-xs font-bold border border-slate-200/80 focus:border-[#ffc72c] focus:bg-white focus:ring-4 focus:ring-[#ffc72c]/10 shadow-xs font-sans outline-none text-right placeholder-slate-400 transition-all duration-300"
             />
             <Search className="absolute top-1/2 right-7.5 -translate-y-1/2 text-slate-400" size={16} />
             {searchQuery && (
@@ -375,7 +375,7 @@ function StoreContent() {
             <div className="absolute top-[21px] left-8 right-8 h-0.5 bg-slate-200/70 -z-10 rounded-full" />
             {/* Connecting Line Progress */}
             <div 
-              className="absolute top-[21px] right-8 h-0.5 bg-[#2d7a1f] -z-10 rounded-full transition-all duration-500" 
+              className="absolute top-[21px] right-8 h-0.5 bg-[#ffc72c] -z-10 rounded-full transition-all duration-500" 
               style={{ width: `${(step / 3) * 100}%`, left: 'auto' }}
             />
             
@@ -400,15 +400,15 @@ function StoreContent() {
                     }}
                     className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black transition-all border-2 cursor-pointer outline-none shadow-xs ${
                       isActive
-                        ? "bg-[#2d7a1f] border-[#2d7a1f] text-white ring-4 ring-[#2d7a1f]/10 scale-110"
+                        ? "bg-[#ffc72c] border-[#ffc72c] text-slate-900 ring-4 ring-[#ffc72c]/15 scale-110"
                         : isCompleted
-                          ? "bg-[#2d7a1f]/10 border-[#2d7a1f] text-[#2d7a1f]"
+                          ? "bg-[#ffc72c]/10 border-[#ffc72c] text-[#e0a61b]"
                           : "bg-white border-slate-200 text-slate-400 disabled:cursor-not-allowed"
                     }`}
                   >
                     {isCompleted ? "✓" : s.index + 1}
                   </button>
-                  <span className={`text-[10px] font-black tracking-wide ${isActive ? "text-[#2d7a1f]" : isCompleted ? "text-slate-800" : "text-slate-400"}`}>
+                  <span className={`text-[10px] font-black tracking-wide ${isActive ? "text-[#e0a61b]" : isCompleted ? "text-slate-800" : "text-slate-400"}`}>
                     {s.label}
                   </span>
                 </div>
