@@ -95,17 +95,7 @@ export async function POST(req: NextRequest) {
     const supabaseAdmin = getSupabaseAdmin();
     if (supabaseAdmin) {
       try {
-        console.log(`Starting Supabase media storage sync for ${products.length} products...`);
-
-        // Process image uploads in parallel batches (concurrency of 25) to avoid timeouts
-        const processedProducts = await processInBatches(products, 25, async (p: any) => {
-          const productId = Number(p.id);
-          const newImageUrl = await uploadImageToSupabase(p.image, productId, supabaseAdmin);
-          return {
-            ...p,
-            image: newImageUrl,
-          };
-        });
+        console.log(`Starting Supabase import for ${products.length} products...`);
 
         // Clear existing products
         const { error: deleteError } = await supabaseAdmin
@@ -119,8 +109,8 @@ export async function POST(req: NextRequest) {
 
         // Insert new products in batches
         const batchSize = 100;
-        for (let i = 0; i < processedProducts.length; i += batchSize) {
-          const batch = processedProducts.slice(i, i + batchSize).map((p: any) => ({
+        for (let i = 0; i < products.length; i += batchSize) {
+          const batch = products.slice(i, i + batchSize).map((p: any) => ({
             id: Number(p.id),
             name: p.name,
             category: p.category,
@@ -148,10 +138,10 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        console.log(`Successfully imported ${products.length} products with Supabase CDN images.`);
+        console.log(`Successfully imported ${products.length} products.`);
         return NextResponse.json({ success: true, count: products.length, source: "supabase" });
       } catch (dbErr: any) {
-        console.error("Supabase import with images failed, falling back to local file:", dbErr);
+        console.error("Supabase import failed, falling back to local file:", dbErr);
       }
     }
 

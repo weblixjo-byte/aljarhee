@@ -495,14 +495,26 @@ function StoreContent() {
                     >
                       {/* Model Image container */}
                       <div className="relative w-full aspect-[4/3] rounded-2xl bg-slate-50 overflow-hidden flex items-center justify-center">
-                        <img
-                          src={imageUrl}
-                          alt={combo.model}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            e.currentTarget.src = "/assets/images/placeholder-product.png";
-                          }}
-                        />
+                        {modelSettings[comboKey] ? (
+                          <img
+                            src={modelSettings[comboKey]}
+                            alt={combo.model}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.style.display = "none";
+                              const parent = e.currentTarget.parentElement;
+                              if (parent) {
+                                const fallback = document.createElement("div");
+                                fallback.className = "flex items-center justify-center w-full h-full text-slate-350 bg-slate-50";
+                                fallback.innerHTML = `<svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M13 17H7"/><path d="M13 9H9"/></svg>`;
+                                parent.appendChild(fallback);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <Car size={36} className="text-slate-300" />
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       </div>
                       
@@ -565,14 +577,26 @@ function StoreContent() {
                   >
                     {/* Category Image container */}
                     <div className="relative w-full aspect-[4/3] rounded-2xl bg-slate-50 overflow-hidden flex items-center justify-center">
-                      <img
-                        src={imageUrl}
-                        alt={catName}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          e.currentTarget.src = "/assets/images/placeholder-product.png";
-                        }}
-                      />
+                      {categorySettings[catName] ? (
+                        <img
+                          src={categorySettings[catName]}
+                          alt={catName}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.style.display = "none";
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                              const fallback = document.createElement("div");
+                              fallback.className = "flex items-center justify-center w-full h-full text-slate-355 bg-slate-50";
+                              fallback.innerHTML = `<svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`;
+                              parent.appendChild(fallback);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <Layers size={36} className="text-slate-300" />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
                     
@@ -747,14 +771,26 @@ function StoreContent() {
                             href={`/store/${product.id}`}
                             className="relative w-full bg-slate-50/70 rounded-2xl flex items-center justify-center overflow-hidden mb-4 aspect-square cursor-pointer"
                           >
-                            <img
-                              src={product.image.startsWith("assets") ? `/${product.image}` : product.image}
-                              alt={product.name}
-                              className="w-[85%] h-[85%] object-contain group-hover:scale-103 transition-transform duration-500"
-                              onError={(e) => {
-                                e.currentTarget.src = "/assets/images/placeholder-product.png";
-                              }}
-                            />
+                            {product.image && !product.image.includes("placeholder") ? (
+                              <img
+                                src={product.image.startsWith("assets") ? `/${product.image}` : product.image}
+                                alt={product.name}
+                                className="w-[85%] h-[85%] object-contain group-hover:scale-103 transition-transform duration-500"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.style.display = "none";
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent) {
+                                    const fallback = document.createElement("div");
+                                    fallback.className = "flex items-center justify-center w-full h-full text-slate-300 bg-slate-50";
+                                    fallback.innerHTML = `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-300"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M20.4 14.5 16 10 4 20"/></svg>`;
+                                    parent.appendChild(fallback);
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <Layers size={32} className="text-slate-300" />
+                            )}
                             {hasDiscount && (
                               <span className="absolute top-3 right-3 bg-red-500 text-white font-black text-[0.62rem] px-2 py-0.5 rounded-lg z-10">
                                 خصم {discountPct}%

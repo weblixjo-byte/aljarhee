@@ -211,51 +211,59 @@ export default function AdminPage() {
   const handleSaveAllImages = async () => {
     setIsSavingCategoryImages(true);
     
-    // Convert any external URLs to Supabase-stored URLs on the fly
     const uploadedCategories: Record<string, string> = {};
     const uploadedBrands: Record<string, string> = {};
     const uploadedModels: Record<string, string> = {};
 
-    const catKeys = Object.keys({ ...categorySettings, ...tempCategoryImages });
-    for (const key of catKeys) {
-      const val = tempCategoryImages[key] !== undefined ? tempCategoryImages[key] : categorySettings[key];
-      if (val) {
-        uploadedCategories[key] = await uploadExternalImageUrlIfNeeded(val);
+    try {
+      const catKeys = Object.keys({ ...categorySettings, ...tempCategoryImages });
+      const catPromises = catKeys.map(async (key) => {
+        const val = tempCategoryImages[key] !== undefined ? tempCategoryImages[key] : categorySettings[key];
+        if (val) {
+          uploadedCategories[key] = await uploadExternalImageUrlIfNeeded(val);
+        }
+      });
+
+      const brandKeys = Object.keys({ ...brandSettings, ...tempBrandLogos });
+      const brandPromises = brandKeys.map(async (key) => {
+        const val = tempBrandLogos[key] !== undefined ? tempBrandLogos[key] : brandSettings[key];
+        if (val) {
+          uploadedBrands[key] = await uploadExternalImageUrlIfNeeded(val);
+        }
+      });
+
+      const modelKeys = Object.keys({ ...modelSettings, ...tempModelImages });
+      const modelPromises = modelKeys.map(async (key) => {
+        const val = tempModelImages[key] !== undefined ? tempModelImages[key] : modelSettings[key];
+        if (val) {
+          uploadedModels[key] = await uploadExternalImageUrlIfNeeded(val);
+        }
+      });
+
+      // Run all uploads concurrently
+      await Promise.all([...catPromises, ...brandPromises, ...modelPromises]);
+
+      const finalSettings = {
+        categories: uploadedCategories,
+        brands: uploadedBrands,
+        models: uploadedModels
+      };
+
+      const success = await saveCategorySettings(finalSettings);
+      if (success) {
+        // Clear temp states to sync
+        setTempCategoryImages({});
+        setTempBrandLogos({});
+        setTempModelImages({});
+        showToast("تم حفظ التعديلات وتأمين استضافة الصور بنجاح!", "success");
+      } else {
+        showToast("حدث خطأ أثناء حفظ التعديلات. يرجى التحقق من الشبكة.", "error");
       }
-    }
-
-    const brandKeys = Object.keys({ ...brandSettings, ...tempBrandLogos });
-    for (const key of brandKeys) {
-      const val = tempBrandLogos[key] !== undefined ? tempBrandLogos[key] : brandSettings[key];
-      if (val) {
-        uploadedBrands[key] = await uploadExternalImageUrlIfNeeded(val);
-      }
-    }
-
-    const modelKeys = Object.keys({ ...modelSettings, ...tempModelImages });
-    for (const key of modelKeys) {
-      const val = tempModelImages[key] !== undefined ? tempModelImages[key] : modelSettings[key];
-      if (val) {
-        uploadedModels[key] = await uploadExternalImageUrlIfNeeded(val);
-      }
-    }
-
-    const finalSettings = {
-      categories: uploadedCategories,
-      brands: uploadedBrands,
-      models: uploadedModels
-    };
-
-    const success = await saveCategorySettings(finalSettings);
-    setIsSavingCategoryImages(false);
-    if (success) {
-      // Clear temp states to sync
-      setTempCategoryImages({});
-      setTempBrandLogos({});
-      setTempModelImages({});
-      showToast("تم حفظ التعديلات وتأمين استضافة الصور بنجاح!", "success");
-    } else {
-      showToast("حدث خطأ أثناء حفظ التعديلات. يرجى التحقق من الشبكة.", "error");
+    } catch (err) {
+      console.error("Save all images error:", err);
+      showToast("حدث خطأ غير متوقع أثناء حفظ الصور.", "error");
+    } finally {
+      setIsSavingCategoryImages(false);
     }
   };
 
@@ -929,9 +937,9 @@ export default function AdminPage() {
             conditionText: carDetails.conditionText,
             image: imageUrl || "/assets/images/placeholder-product.png",
             description: `قطعة غيار أصلية متوافقة مع سيارات ${finalBrand === "all" ? "مختلف الأنواع" : finalBrand.toUpperCase()} ${finalModel === "all" ? "" : finalModel}، خاضعة لفحص الجودة وكفالة تشغيل حقيقية من مركز الجارحي.`,
-            featured: mappedProducts.length < 8,
+            featured: false,
             bestSeller: false,
-            newArrival
+            newArrival: false
           });
         });
 
@@ -1751,7 +1759,7 @@ export default function AdminPage() {
                                 className="flex-1 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:outline-none text-xs font-en"
                               />
                               <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                                {currentVal ? <img src={currentVal} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/assets/images/placeholder-product.png"; }} /> : <Layers size={14} className="text-slate-400" />}
+                                {currentVal ? <img src={currentVal} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2'><circle cx='12' cy='12' r='10'/></svg>"; }} /> : <Layers size={14} className="text-slate-400" />}
                               </div>
                             </div>
                           </div>
@@ -1790,7 +1798,7 @@ export default function AdminPage() {
                                 className="flex-1 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:outline-none text-xs font-en"
                               />
                               <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                                {currentVal ? <img src={currentVal} alt="Preview" className="w-full h-full object-contain p-1" onError={(e) => { e.currentTarget.src = "/assets/images/placeholder-product.png"; }} /> : <Layers size={14} className="text-slate-400" />}
+                                {currentVal ? <img src={currentVal} alt="Preview" className="w-full h-full object-contain p-1" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2'><circle cx='12' cy='12' r='10'/></svg>"; }} /> : <Layers size={14} className="text-slate-400" />}
                               </div>
                             </div>
                           </div>
@@ -1845,7 +1853,7 @@ export default function AdminPage() {
                                 className="flex-1 px-3 py-2 rounded-xl border border-slate-200 focus:border-brand-green focus:outline-none text-xs font-en"
                               />
                               <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                                {currentVal ? <img src={currentVal} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = "/assets/images/placeholder-product.png"; }} /> : <Layers size={14} className="text-slate-400" />}
+                                {currentVal ? <img src={currentVal} alt="Preview" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2'><circle cx='12' cy='12' r='10'/></svg>"; }} /> : <Layers size={14} className="text-slate-400" />}
                               </div>
                             </div>
                           </div>
