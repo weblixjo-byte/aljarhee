@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       throw upsertError;
     }
 
-    // 4. Send Pushover Notification if configured
+    // 4. Send Notifications (Pushover + Web3Forms Email) if configured
     try {
       const { data: settingsRow } = await supabaseAdmin
         .from("products")
@@ -85,17 +85,24 @@ export async function POST(req: NextRequest) {
 
       let pushoverToken = process.env.PUSHOVER_TOKEN || "";
       let pushoverUser = process.env.PUSHOVER_USER || "";
+      let web3formsKey = "";
 
       if (settingsRow && settingsRow.description) {
         try {
           const parsed = JSON.parse(settingsRow.description);
           if (parsed.pushoverToken) pushoverToken = parsed.pushoverToken;
           if (parsed.pushoverUser) pushoverUser = parsed.pushoverUser;
+          if (parsed.web3formsKey) web3formsKey = parsed.web3formsKey;
         } catch (e) {}
       }
 
+      const itemsSummary = newOrder.cartItems
+        .map((item: any) => `- ${item.name} (الكمية: ${item.quantity}) — ${item.price} د.أ`)
+        .join("\n");
+
+      // 4a. Pushover notification
       if (pushoverToken && pushoverUser) {
-        const itemsSummary = newOrder.cartItems
+        const itemsSummaryShort = newOrder.cartItems
           .map((item: any) => `• ${item.name} (${item.quantity}x)`)
           .join("\n");
 
@@ -103,26 +110,54 @@ export async function POST(req: NextRequest) {
                         `الزبون: ${newOrder.customerName}\n` +
                         `الهاتف: ${newOrder.customerPhone}\n` +
                         `العنوان: ${newOrder.customerCity} - ${newOrder.customerAddress}\n\n` +
-                        `القطع المطلوبة:\n${itemsSummary}`;
+                        `القطع المطلوبة:\n${itemsSummaryShort}`;
 
         await fetch("https://api.pushover.net/1/messages.json", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             token: pushoverToken,
             user: pushoverUser,
             title: `طلب جديد ${newOrder.id}`,
             message: msgText,
-            priority: 1, // high priority
+            priority: 1,
             sound: "onload",
           }),
         });
         console.log("Pushover notification triggered successfully.");
       }
-    } catch (pushErr) {
-      console.warn("Pushover notification failed, but order saved:", pushErr);
+
+      // 4b. Web3Forms email notification
+      if (web3formsKey) {
+        const emailMessage =
+          `📦 طلب جديد وارد — ${newOrder.id}\n\n` +
+          `👤 الاسم: ${newOrder.customerName}\n` +
+          `📞 الهاتف: ${newOrder.customerPhone}\n` +
+          `🏙️ المدينة: ${newOrder.customerCity}\n` +
+          `📍 العنوان: ${newOrder.customerAddress}\n\n` +
+          `🛒 القطع المطلوبة:\n${itemsSummary}\n\n` +
+          `💰 المجموع الفرعي: ${newOrder.subtotal} د.أ\n` +
+          `🚚 رسوم الشحن: ${newOrder.shippingFee} د.أ\n` +
+          `💵 الإجمالي: ${newOrder.total} د.أ\n\n` +
+          `🕐 وقت الطلب: ${new Date(newOrder.createdAt).toLocaleString("ar-JO")}`;
+
+        await fetch("https://api.web3forms.com/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify({
+            access_key: web3formsKey,
+            subject: `🛒 طلب جديد ${newOrder.id} — ${newOrder.customerName} — ${newOrder.total} د.أ`,
+            from_name: "متجر الجارحي - إشعار طلب جديد",
+            message: emailMessage,
+          }),
+        });
+        console.log("Web3Forms order email sent successfully.");
+      }
+    } catch (notifyErr) {
+      console.warn("Notification failed, but order was saved:", notifyErr);
     }
 
     return NextResponse.json({ success: true, orderId: orderIdString });
