@@ -326,10 +326,6 @@ function StoreContent() {
       {/* ── World-Class Minimalist Header ── */}
       <div className="bg-white border-b border-slate-100 py-16 text-center mb-10">
         <div className="max-w-4xl mx-auto px-4">
-          <span className="inline-flex items-center gap-1 bg-[#2d7a1f]/5 border border-[#2d7a1f]/10 text-[#2d7a1f] font-black text-[10px] px-3.5 py-1.5 rounded-full uppercase tracking-wider mb-4">
-            <Sparkle size={10} className="fill-[#2d7a1f]" />
-            <span>متجر قطع غيار السيارات</span>
-          </span>
           <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-3 text-slate-900 leading-tight">
             كتالوج قطع الغيار الأصلي
           </h1>
@@ -444,17 +440,6 @@ function StoreContent() {
                     </span>
                   </button>
                 ))}
-              </div>
-            )}
-
-            {dynamicBrands.length > 0 && (
-              <div className="mt-10 border-t border-slate-100 pt-8">
-                <button
-                  onClick={() => { setSelectedBrand("all"); setSelectedModel("all"); setSelectedYear("all"); setSelectedCategory("all"); }}
-                  className="bg-slate-50 hover:bg-slate-100 text-slate-600 font-black text-xs px-8 py-3.5 rounded-xl border border-slate-200/50 cursor-pointer transition-colors shadow-xs"
-                >
-                  تصفح جميع قطع الغيار المتاحة بالموقع مباشرة
-                </button>
               </div>
             )}
           </div>
