@@ -388,8 +388,8 @@ export default function Home() {
         {/* Car Brands scrolling marquee */}
         <BrandsMarquee />
 
-        {/* Video Showcase Section */}
-        <section className="pb-16 pt-4 bg-white">
+        {/* Video Showcase Section — hidden on mobile */}
+        <section className="hidden sm:block pb-16 pt-4 bg-white">
           <div className="max-w-[1000px] mx-auto px-4 sm:px-6">
             <div className="relative overflow-hidden rounded-3xl bg-black shadow-[0_15px_40px_rgba(0,0,0,0.06)] aspect-video">
               <video
