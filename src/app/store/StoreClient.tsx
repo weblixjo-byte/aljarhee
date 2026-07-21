@@ -356,18 +356,20 @@ function StoreContent() {
 
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* ── World-Class Minimalist Breadcrumbs Navigation ── */}
+        {/* ── Breadcrumb Navigation ── */}
         {!isSearchActive && (
-          <div className="flex items-center justify-center flex-wrap gap-2.5 py-4 mb-8 text-[11px] font-black text-slate-400 select-none bg-slate-50/60 px-6 py-3 rounded-2xl max-w-xl mx-auto border border-slate-100/50" dir="rtl">
-            {/* Step 0: main category/brand selection */}
+          <div className="flex items-center justify-center flex-wrap gap-2 py-3 mb-6 text-[12px] sm:text-[11px] font-black text-slate-400 select-none bg-white sm:bg-slate-50/60 px-4 sm:px-6 rounded-2xl max-w-xl mx-auto border border-slate-200 sm:border-slate-100/50 shadow-sm sm:shadow-none" dir="rtl">
+            {/* Step 0: Home / reset */}
             <button
               type="button"
               onClick={resetAll}
-              className={`hover:text-[#e0a61b] transition-colors cursor-pointer border-0 bg-transparent font-black ${
-                step === 0 ? "text-amber-600 bg-amber-50/70 px-3 py-1.5 rounded-lg border border-amber-100" : "text-slate-500"
+              className={`transition-colors cursor-pointer border-0 bg-transparent font-black py-1.5 px-3 rounded-lg text-xs sm:text-[11px] ${
+                step === 0
+                  ? "text-amber-600 bg-amber-50 border border-amber-200"
+                  : "text-[#2d7a1f] hover:text-[#246118] hover:bg-green-50 active:bg-green-100"
               }`}
             >
-              الرئيسية
+              🏠 الرئيسية
             </button>
 
             {/* Step 1: Brand selected */}
@@ -378,10 +380,10 @@ function StoreContent() {
                   type="button"
                   onClick={() => router.push(`/store?brand=${selectedBrand}`)}
                   disabled={step === 1}
-                  className={`transition-colors cursor-pointer border-0 bg-transparent font-black ${
-                    step === 1 
-                      ? "text-amber-600 bg-amber-50/70 px-3 py-1.5 rounded-lg border border-amber-100" 
-                      : "text-slate-500 hover:text-[#e0a61b] disabled:cursor-default"
+                  className={`transition-colors cursor-pointer border-0 bg-transparent font-black py-1.5 px-3 rounded-lg text-xs sm:text-[11px] ${
+                    step === 1
+                      ? "text-amber-600 bg-amber-50 border border-amber-200"
+                      : "text-[#2d7a1f] hover:text-[#246118] hover:bg-green-50 active:bg-green-100 disabled:cursor-default"
                   }`}
                 >
                   {dynamicBrands.find((b) => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}
@@ -397,10 +399,10 @@ function StoreContent() {
                   type="button"
                   onClick={() => router.push(`/store?brand=${selectedBrand}&model=${encodeURIComponent(selectedModel)}&year=${encodeURIComponent(selectedYear)}`)}
                   disabled={step === 2}
-                  className={`transition-colors cursor-pointer border-0 bg-transparent font-black ${
-                    step === 2 
-                      ? "text-amber-600 bg-amber-50/70 px-3 py-1.5 rounded-lg border border-amber-100" 
-                      : "text-slate-500 hover:text-[#e0a61b] disabled:cursor-default"
+                  className={`transition-colors cursor-pointer border-0 bg-transparent font-black py-1.5 px-3 rounded-lg text-xs sm:text-[11px] ${
+                    step === 2
+                      ? "text-amber-600 bg-amber-50 border border-amber-200"
+                      : "text-[#2d7a1f] hover:text-[#246118] hover:bg-green-50 active:bg-green-100 disabled:cursor-default"
                   }`}
                 >
                   {selectedModel} ({selectedYear})
@@ -412,7 +414,7 @@ function StoreContent() {
             {selectedBrand && selectedModel && selectedYear && selectedCategory && (
               <>
                 <ChevronLeft className="text-slate-300 shrink-0" size={13} />
-                <span className="text-amber-600 bg-amber-50/70 px-3 py-1.5 rounded-lg border border-amber-100 font-black">
+                <span className="text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 font-black text-xs sm:text-[11px]">
                   {selectedCategory}
                 </span>
               </>
