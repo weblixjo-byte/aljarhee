@@ -54,3 +54,41 @@ export function extractIdFromSlug(slug: string): number {
   const match = decoded.match(/^(\d+)/);
   return match ? Number(match[1]) : NaN;
 }
+
+const BRAND_ALIASES: Record<string, string[]> = {
+  toyota: ["toyota", "تويوتا"],
+  kia: ["kia", "كيا"],
+  hyundai: ["hyundai", "هيونداي"],
+  ford: ["ford", "فورد"],
+  honda: ["honda", "هوندا"],
+  chevrolet: ["chevrolet", "شفروليه", "شيفروليه"],
+  lexus: ["lexus", "لكزس", "ليكزس"],
+  tesla: ["tesla", "تيسلا"],
+  byd: ["byd", "بي واي دي"],
+  volkswagen: ["volkswagen", "فولكس فاجن", "فولكس"],
+  nissan: ["nissan", "نيسان"],
+  mitsubishi: ["mitsubishi", "ميتسوبيشي"],
+  mercedes: ["mercedes", "مرسيدس"],
+  bmw: ["bmw", "بي إم دبليو", "بي ام دبليو"],
+  lincoln: ["lincoln", "لينكولن"],
+};
+
+/**
+ * Checks if two brand strings refer to the same brand (handles Arabic/English & spelling variations).
+ * Example: isSameBrand("نيسان", "nissan") → true
+ * Example: isSameBrand("ليكزس", "lexus") → true
+ */
+export function isSameBrand(b1?: string, b2?: string): boolean {
+  if (!b1 || !b2) return false;
+  const s1 = b1.trim().toLowerCase();
+  const s2 = b2.trim().toLowerCase();
+  if (s1 === s2) return true;
+
+  for (const aliases of Object.values(BRAND_ALIASES)) {
+    const hasS1 = aliases.some((a) => a.toLowerCase() === s1);
+    const hasS2 = aliases.some((a) => a.toLowerCase() === s2);
+    if (hasS1 && hasS2) return true;
+  }
+
+  return false;
+}

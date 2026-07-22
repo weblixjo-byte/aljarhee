@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useProducts } from "../../context/ProductContext";
 import { useToast } from "../../context/ToastContext";
 import { Product } from "../../data/products";
-import { createSlug } from "../../lib/config";
+import { createSlug, isSameBrand } from "../../lib/config";
 import {
   Car,
   ChevronLeft,
@@ -166,7 +166,7 @@ function StoreContent() {
     if (!selectedBrand) return [];
 
     const brandProducts = products.filter(
-      (p) => p.brand && p.brand.toLowerCase() === selectedBrand.toLowerCase()
+      (p) => p.brand && isSameBrand(p.brand, selectedBrand)
     );
 
     const combos: { model: string; year: string }[] = [];
@@ -196,7 +196,7 @@ function StoreContent() {
 
     const vehicleProducts = products.filter(
       (p) =>
-        p.brand && p.brand.toLowerCase() === selectedBrand.toLowerCase() &&
+        p.brand && isSameBrand(p.brand, selectedBrand) &&
         p.model && p.model.toLowerCase() === selectedModel.toLowerCase() &&
         p.year && String(p.year).toLowerCase() === String(selectedYear).toLowerCase()
     );
@@ -387,7 +387,7 @@ function StoreContent() {
                       : "text-[#2d7a1f] hover:text-[#246118] hover:bg-green-50 active:bg-green-100 disabled:cursor-default"
                   }`}
                 >
-                  {dynamicBrands.find((b) => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}
+                  {dynamicBrands.find((b) => b.key === selectedBrand || isSameBrand(b.key, selectedBrand) || isSameBrand(b.name, selectedBrand))?.name || selectedBrand.toUpperCase()}
                 </button>
               </>
             )}
@@ -469,7 +469,7 @@ function StoreContent() {
               <div>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">الماركة المختارة</span>
                 <span className="text-xs font-black text-[#2d7a1f]">
-                  {dynamicBrands.find((b) => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}
+                  {dynamicBrands.find((b) => b.key === selectedBrand || isSameBrand(b.key, selectedBrand) || isSameBrand(b.name, selectedBrand))?.name || selectedBrand.toUpperCase()}
                 </span>
               </div>
               <button
@@ -556,7 +556,7 @@ function StoreContent() {
               <div>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">السيارة المحددة</span>
                 <span className="text-xs font-black text-[#2d7a1f]">
-                  {dynamicBrands.find((b) => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()} · {selectedModel} {selectedYear}
+                  {dynamicBrands.find((b) => b.key === selectedBrand || isSameBrand(b.key, selectedBrand) || isSameBrand(b.name, selectedBrand))?.name || selectedBrand.toUpperCase()} · {selectedModel} {selectedYear}
                 </span>
               </div>
               <button
@@ -643,7 +643,7 @@ function StoreContent() {
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">الماركة</span>
                     <div className="flex items-center justify-between bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl text-xs font-black text-slate-700">
-                      <span>{dynamicBrands.find((b) => b.key === selectedBrand)?.name || selectedBrand.toUpperCase()}</span>
+                      <span>{dynamicBrands.find((b) => b.key === selectedBrand || isSameBrand(b.key, selectedBrand) || isSameBrand(b.name, selectedBrand))?.name || selectedBrand.toUpperCase()}</span>
                       <button
                         onClick={resetAll}
                         className="text-slate-400 hover:text-red-500 bg-transparent border-0 cursor-pointer p-0.5 transition-colors"
