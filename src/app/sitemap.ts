@@ -48,11 +48,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Dynamically map every product to the sitemap with SEO-friendly slugs
+  // Dynamically map every product to the sitemap with clean, WhatsApp-friendly ASCII slugs
   const productRoutes = allProducts
     .filter((product) => product.id > 0)
     .map((product) => ({
-      url: `${baseUrl}/store/${encodeURI(createSlug(product.id, product.name))}`,
+      url: `${baseUrl}/store/${createSlug(product.id, product.name, product.brand, product.model)}`,
       lastModified: new Date(),
       changeFrequency: "weekly" as const,
       priority: 0.7,

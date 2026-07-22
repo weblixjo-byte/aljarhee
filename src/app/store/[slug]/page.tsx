@@ -35,7 +35,7 @@ export async function generateStaticParams() {
     const products = await getProductsList();
     const displayProducts = products.filter((p) => p.id > 0);
     return displayProducts.map((p) => ({
-      slug: encodeURI(createSlug(p.id, p.name)),
+      slug: createSlug(p.id, p.name, p.brand, p.model),
     }));
   } catch (e) {
     return [];
@@ -58,8 +58,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const rawSlug = createSlug(product.id, product.name);
-  const encodedSlug = encodeURI(rawSlug);
+  const canonicalSlug = createSlug(product.id, product.name, product.brand, product.model);
   const brandName = getBrandName(product.brand);
   const title = `شراء ${product.name} لسيارات ${brandName} ${product.model} (${product.year}) | الجارحي`;
   const priceText = product.price > 0 ? `السعر: ${product.price} د.أ.` : "طلب السعر عند الاستفسار.";
@@ -72,7 +71,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         : `${SITE_URL}${product.image.startsWith("/") ? "" : "/"}${product.image}`)
     : `${SITE_URL}/assets/images/logo.png`;
 
-  const canonicalUrl = `${SITE_URL}/store/${encodedSlug}`;
+  const canonicalUrl = `${SITE_URL}/store/${canonicalSlug}`;
 
   return {
     title,
@@ -115,13 +114,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  // Canonical slug redirect: if someone visits /store/42 or stale slug → redirect to canonical encoded slug
-  const rawSlug = createSlug(product.id, product.name);
-  const encodedSlug = encodeURI(rawSlug);
+  // Canonical slug redirect: if someone visits /store/61 or old Arabic slug → 301 redirect to clean Latin slug
+  const canonicalSlug = createSlug(product.id, product.name, product.brand, product.model);
   const decodedInputSlug = decodeURIComponent(resolvedParams.slug);
 
-  if (decodedInputSlug !== rawSlug && resolvedParams.slug !== encodedSlug) {
-    redirect(`/store/${encodedSlug}`);
+  if (resolvedParams.slug !== canonicalSlug && decodedInputSlug !== canonicalSlug) {
+    redirect(`/store/${canonicalSlug}`);
   }
 
   const absoluteImageUrl = product.image
@@ -151,7 +149,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             },
             offers: {
               "@type": "Offer",
-              url: `${SITE_URL}/store/${encodedSlug}`,
+              url: `${SITE_URL}/store/${canonicalSlug}`,
               priceCurrency: "JOD",
               price: product.price,
               priceValidUntil: new Date(

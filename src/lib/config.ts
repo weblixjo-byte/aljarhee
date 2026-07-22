@@ -1,30 +1,53 @@
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://aljarhee-sp.com";
 
 /**
- * Creates an SEO-friendly slug from a product ID and name.
- * Example: createSlug(42, "فلتر زيت تويوتا كامري") → "42-فلتر-زيت-تويوتا-كامري"
- * The numeric ID prefix guarantees uniqueness and allows backward lookup.
+ * Transliterates Arabic characters to clean ASCII/Latin letters.
  */
-export function createSlug(id: number, name: string): string {
-  // Clean special characters
-  const cleanName = name
-    .trim()
-    .replace(/[/\\?%*:|"<>#]/g, "") // remove unsafe URL chars
-    .replace(/\s+/g, " ");
+function arabicToLatin(text: string): string {
+  const map: Record<string, string> = {
+    أ: "a", إ: "a", آ: "a", ا: "a", ب: "b", ت: "t", ث: "th", ج: "j", ح: "h", خ: "kh",
+    د: "d", ذ: "dh", ر: "r", ز: "z", س: "s", ش: "sh", ص: "s", ض: "d", ط: "t", ظ: "z",
+    ع: "a", غ: "gh", ف: "f", ق: "q", ك: "k", ل: "l", م: "m", ن: "n", ه: "h", و: "w",
+    ي: "y", ى: "a", ة: "h", ء: "", ؤ: "w", ئ: "y"
+  };
 
-  // Take the first 3 key words for a short, clean, concise URL
-  const shortName = cleanName
-    .split(" ")
+  return text
+    .split("")
+    .map((ch) => map[ch] || ch)
+    .join("")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/**
+ * Creates a 100% clean, ASCII/Latin URL slug for social sharing and SEO.
+ * Example: createSlug(61, "هوب خلفي", "toyota", "camry") → "61-toyota-camry-hwb-khlfy"
+ * This prevents %D9%87%D8%A8 encoding issues on WhatsApp & messaging apps.
+ */
+export function createSlug(id: number, name: string, brand?: string, model?: string): string {
+  const cleanBrand = brand && brand.toLowerCase() !== "all"
+    ? brand.toLowerCase().replace(/[^a-z0-9]/g, "")
+    : "";
+  const cleanModel = model && model.toLowerCase() !== "all"
+    ? model.toLowerCase().replace(/[^a-z0-9]/g, "")
+    : "";
+
+  const latinName = arabicToLatin(name)
+    .split("-")
     .filter(Boolean)
     .slice(0, 3)
     .join("-");
 
-  return `${id}-${shortName}`;
+  const parts = [id, cleanBrand, cleanModel, latinName].filter(Boolean);
+  return parts.join("-");
 }
 
 /**
- * Extracts the numeric product ID from a slug (handles encoded or decoded slugs).
- * Example: extractIdFromSlug("42-%D9%81%D9%84%D8%AA%D8%B1") → 42
+ * Extracts the numeric product ID from a slug (handles encoded, decoded, or Latin slugs).
+ * Example: extractIdFromSlug("61-toyota-camry-hwb-khlfy") → 61
  */
 export function extractIdFromSlug(slug: string): number {
   const decoded = decodeURIComponent(slug);

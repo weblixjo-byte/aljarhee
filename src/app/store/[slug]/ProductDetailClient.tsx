@@ -394,7 +394,7 @@ export default function ProductDetailClient({ product, allProducts }: ProductDet
                 return (
                   <Link
                     key={relProduct.id}
-                    href={`/store/${createSlug(relProduct.id, relProduct.name)}`}
+                    href={`/store/${createSlug(relProduct.id, relProduct.name, relProduct.brand, relProduct.model)}`}
                     className="group bg-white rounded-2xl overflow-hidden border border-slate-100 hover:border-slate-200 hover:shadow-[0_12px_32px_rgba(0,0,0,0.07)] hover:-translate-y-1 transition-all duration-300 flex flex-col p-3.5 text-right cursor-pointer"
                   >
                     {/* Image */}
