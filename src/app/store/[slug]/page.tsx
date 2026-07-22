@@ -1,11 +1,11 @@
 import { Metadata } from "next";
 import { getProductsList } from "../../../lib/productsApi";
 import ProductDetailClient from "./ProductDetailClient";
-import { notFound } from "next/navigation";
-import { SITE_URL } from "../../../lib/config";
+import { notFound, redirect } from "next/navigation";
+import { SITE_URL, createSlug, extractIdFromSlug } from "../../../lib/config";
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }
 
 function getBrandName(brandKey: string): string {
@@ -35,7 +35,7 @@ export async function generateStaticParams() {
     const products = await getProductsList();
     const displayProducts = products.filter((p) => p.id > 0);
     return displayProducts.map((p) => ({
-      id: String(p.id),
+      slug: encodeURI(createSlug(p.id, p.name)),
     }));
   } catch (e) {
     return [];
@@ -45,10 +45,10 @@ export async function generateStaticParams() {
 // 2. Incremental Static Regeneration (ISR) configuration
 export const revalidate = 60; // Regenerate pages in the background every 60 seconds
 
-// 3. Dynamic Server-Side SEO Metadata (unmatched SEO for Google search result ranking!)
+// 3. Dynamic Server-Side SEO Metadata
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const resolvedParams = await params;
-  const productId = Number(resolvedParams.id);
+  const productId = extractIdFromSlug(resolvedParams.slug);
   const products = await getProductsList();
   const product = products.find((p) => p.id === productId);
 
@@ -58,6 +58,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
+  const rawSlug = createSlug(product.id, product.name);
+  const encodedSlug = encodeURI(rawSlug);
   const brandName = getBrandName(product.brand);
   const title = `شراء ${product.name} لسيارات ${brandName} ${product.model} (${product.year}) | الجارحي`;
   const priceText = product.price > 0 ? `السعر: ${product.price} د.أ.` : "طلب السعر عند الاستفسار.";
@@ -70,16 +72,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         : `${SITE_URL}${product.image.startsWith("/") ? "" : "/"}${product.image}`)
     : `${SITE_URL}/assets/images/logo.png`;
 
+  const canonicalUrl = `${SITE_URL}/store/${encodedSlug}`;
+
   return {
     title,
     description,
     alternates: {
-      canonical: `${SITE_URL}/store/${product.id}`,
+      canonical: canonicalUrl,
     },
     openGraph: {
       title,
       description,
-      url: `${SITE_URL}/store/${product.id}`,
+      url: canonicalUrl,
       siteName: "الجارحي لقطع غيار السيارات",
       locale: "ar_JO",
       type: "website",
@@ -103,12 +107,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ProductDetailPage({ params }: PageProps) {
   const resolvedParams = await params;
-  const productId = Number(resolvedParams.id);
+  const productId = extractIdFromSlug(resolvedParams.slug);
   const allProducts = await getProductsList();
   const product = allProducts.find((p) => p.id === productId);
 
   if (!product) {
     notFound();
+  }
+
+  // Canonical slug redirect: if someone visits /store/42 or stale slug → redirect to canonical encoded slug
+  const rawSlug = createSlug(product.id, product.name);
+  const encodedSlug = encodeURI(rawSlug);
+  const decodedInputSlug = decodeURIComponent(resolvedParams.slug);
+
+  if (decodedInputSlug !== rawSlug && resolvedParams.slug !== encodedSlug) {
+    redirect(`/store/${encodedSlug}`);
   }
 
   const absoluteImageUrl = product.image
@@ -138,7 +151,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             },
             offers: {
               "@type": "Offer",
-              url: `${SITE_URL}/store/${product.id}`,
+              url: `${SITE_URL}/store/${encodedSlug}`,
               priceCurrency: "JOD",
               price: product.price,
               priceValidUntil: new Date(

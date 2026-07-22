@@ -1,6 +1,6 @@
 import { MetadataRoute } from "next";
 import { getProductsList } from "../lib/productsApi";
-import { SITE_URL } from "../lib/config";
+import { SITE_URL, createSlug } from "../lib/config";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = SITE_URL;
@@ -48,11 +48,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Dynamically map every product to the sitemap (excluding system rows)
+  // Dynamically map every product to the sitemap with SEO-friendly slugs
   const productRoutes = allProducts
     .filter((product) => product.id > 0)
     .map((product) => ({
-      url: `${baseUrl}/store/${product.id}`,
+      url: `${baseUrl}/store/${encodeURI(createSlug(product.id, product.name))}`,
       lastModified: new Date(),
       changeFrequency: "weekly" as const,
       priority: 0.7,

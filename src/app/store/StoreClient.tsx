@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useProducts } from "../../context/ProductContext";
 import { useToast } from "../../context/ToastContext";
 import { Product } from "../../data/products";
+import { createSlug } from "../../lib/config";
 import {
   Car,
   ChevronLeft,
@@ -774,7 +775,7 @@ function StoreContent() {
                         >
                           {/* Image box */}
                           <Link
-                            href={`/store/${product.id}`}
+                            href={`/store/${createSlug(product.id, product.name)}`}
                             className="relative w-full bg-slate-50/70 rounded-2xl flex items-center justify-center overflow-hidden mb-4 aspect-square cursor-pointer"
                           >
                             {product.image && !product.image.includes("placeholder") ? (
@@ -814,7 +815,7 @@ function StoreContent() {
                             <span className="text-[0.62rem] font-black text-slate-400 uppercase tracking-wider mb-1 font-en">
                               {product.brand ? product.brand.toUpperCase() : "SPARE PARTS"}
                             </span>
-                            <Link href={`/store/${product.id}`}>
+                            <Link href={`/store/${createSlug(product.id, product.name)}`}>
                               <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-snug line-clamp-2 mb-1 hover:text-[#2d7a1f] transition-colors cursor-pointer">
                                 {product.name}
                               </h3>
