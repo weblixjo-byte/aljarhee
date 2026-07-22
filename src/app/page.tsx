@@ -500,44 +500,27 @@ export default function Home() {
                   </p>
                 </div>
 
-                {/* Elegant Typography Row List */}
-                <div className="flex flex-col gap-6">
-                  
-                  {/* Item 1 */}
-                  <div className="flex gap-4 items-start border-r-2 border-[#2d7a1f]/30 pr-5">
-                    <div>
-                      <h4 className="text-xs font-black text-slate-450 mb-1">الفرع الأول - البيادر</h4>
-                      <p className="text-sm font-black text-slate-800">عمان - البيادر - إشارات الصناعة - بجانب الكابتن</p>
-                    </div>
-                  </div>
-
-                  {/* Item 2 */}
-                  <div className="flex gap-4 items-start border-r-2 border-[#2d7a1f]/30 pr-5">
-                    <div>
-                      <h4 className="text-xs font-black text-slate-450 mb-1">الاتصال المباشر والواتساب</h4>
-                      <p className="text-sm font-black text-slate-800">0789089842</p>
-                    </div>
-                  </div>
-
-                  {/* Item 3 */}
-                  <div className="flex gap-4 items-start border-r-2 border-[#2d7a1f]/30 pr-5">
-                    <div>
-                      <h4 className="text-xs font-black text-slate-450 mb-1">أوقات استقبال الاستفسارات والمعاينة</h4>
-                      <p className="text-sm font-black text-slate-800">السبت - الخميس: 8:30 صباحاً - 7:00 مساءً</p>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* CTA Button */}
-                <div className="pt-2">
-                  <Link
-                    href="/contact"
-                    className="inline-flex items-center justify-center gap-2 bg-[#2d7a1f] hover:bg-[#246118] text-white px-9 py-4 rounded-2xl font-black text-xs transition-all shadow-md shadow-[#2d7a1f]/20 hover:-translate-y-0.5 cursor-pointer border-0"
+                {/* Two Neat Direct Action Buttons */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-4">
+                  {/* Direct Call Button */}
+                  <a
+                    href="tel:0789089842"
+                    className="flex-1 inline-flex items-center justify-center gap-3 bg-[#2d7a1f] hover:bg-[#246118] text-white px-7 py-4 rounded-2xl font-black text-sm transition-all shadow-md shadow-[#2d7a1f]/20 hover:-translate-y-1 cursor-pointer border-0 text-center"
                   >
-                    <span>انتقل إلى صفحة تواصل معنا</span>
-                    <span>←</span>
-                  </Link>
+                    <PhoneCall size={18} />
+                    <span>اتصال مباشر: 0789089842</span>
+                  </a>
+
+                  {/* Direct Map Button */}
+                  <a
+                    href="https://maps.google.com/?q=الجارحي+لقطع+سيارات+الهايبرد+عمان+البيادر"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 inline-flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 hover:border-[#2d7a1f] px-7 py-4 rounded-2xl font-black text-sm transition-all shadow-xs hover:-translate-y-1 cursor-pointer text-center"
+                  >
+                    <MapPin size={18} className="text-[#2d7a1f]" />
+                    <span>موقعنا على الخريطة</span>
+                  </a>
                 </div>
               </div>
 
