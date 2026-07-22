@@ -6,13 +6,20 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://aljarhee-sp
  * The numeric ID prefix guarantees uniqueness and allows backward lookup.
  */
 export function createSlug(id: number, name: string): string {
-  const normalized = name
+  // Clean special characters
+  const cleanName = name
     .trim()
-    .replace(/\s+/g, "-")       // spaces → dashes
-    .replace(/[/\\?%*:|"<>]/g, "") // remove unsafe URL chars
-    .replace(/-{2,}/g, "-")     // collapse multiple dashes
-    .replace(/^-|-$/g, "");     // trim leading/trailing dashes
-  return `${id}-${normalized}`;
+    .replace(/[/\\?%*:|"<>#]/g, "") // remove unsafe URL chars
+    .replace(/\s+/g, " ");
+
+  // Take the first 3 key words for a short, clean, concise URL
+  const shortName = cleanName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 3)
+    .join("-");
+
+  return `${id}-${shortName}`;
 }
 
 /**
