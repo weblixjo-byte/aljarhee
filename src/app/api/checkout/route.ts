@@ -77,32 +77,9 @@ export async function POST(req: NextRequest) {
 
     // 4. Send Notifications (Pushover + Web3Forms Email) if configured
     try {
-      const { data: settingsRow, error: settingsErr } = await supabaseAdmin
-        .from("products")
-        .select("description")
-        .eq("id", 0)
-        .single();
-
-      if (settingsErr) {
-        console.warn("Could not read settings row:", settingsErr.message);
-      }
-
-      let pushoverToken = process.env.PUSHOVER_TOKEN || "";
-      let pushoverUser = process.env.PUSHOVER_USER || "";
-      // Prefer env var, fallback to database value
-      let web3formsKey = process.env.WEB3FORMS_KEY || "";
-
-      if (settingsRow && settingsRow.description) {
-        try {
-          const parsed = JSON.parse(settingsRow.description);
-          if (parsed.pushoverToken) pushoverToken = parsed.pushoverToken;
-          if (parsed.pushoverUser) pushoverUser = parsed.pushoverUser;
-          // Only override if no env var is set
-          if (!web3formsKey && parsed.web3formsKey) web3formsKey = parsed.web3formsKey;
-        } catch (e) {
-          console.warn("Failed to parse settings JSON:", e);
-        }
-      }
+      const pushoverToken = process.env.PUSHOVER_TOKEN || "";
+      const pushoverUser = process.env.PUSHOVER_USER || "";
+      const web3formsKey = process.env.WEB3FORMS_KEY || process.env.NEXT_PUBLIC_WEB3FORMS_KEY || "8c7551cf-f507-4dec-b670-4383097ee4cb";
 
       console.log(`[Checkout] web3formsKey present: ${!!web3formsKey}, pushover present: ${!!(pushoverToken && pushoverUser)}`);
 

@@ -29,32 +29,7 @@ export default function ContactClient() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [sentViaEmail, setSentViaEmail] = useState(false);
-  const [web3formsKey, setWeb3formsKey] = useState("");
-
-  // Load Web3Forms Key from settings row (id: 0) on mount
-  useEffect(() => {
-    async function loadSettings() {
-      try {
-        if (supabase) {
-          const { data: settingsRow } = await supabase
-            .from("products")
-            .select("description")
-            .eq("id", 0)
-            .single();
-
-          if (settingsRow && settingsRow.description) {
-            const parsed = JSON.parse(settingsRow.description);
-            if (parsed.web3formsKey) {
-              setWeb3formsKey(parsed.web3formsKey.trim());
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to load settings in Contact page:", e);
-      }
-    }
-    loadSettings();
-  }, []);
+  const web3formsKey = process.env.NEXT_PUBLIC_WEB3FORMS_KEY || "8c7551cf-f507-4dec-b670-4383097ee4cb";
 
   const contactCards = [
     {

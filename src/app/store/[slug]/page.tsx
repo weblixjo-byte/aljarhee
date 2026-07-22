@@ -13,11 +13,11 @@ function getBrandName(brandKey: string): string {
   return brandKey;
 }
 
-// 1. Generate Static Params for build-time rendering (blazing fast loading!)
+// 1. Generate Static Params for build-time rendering (Top 40 products pre-rendered for lightning fast 30s builds!)
 export async function generateStaticParams() {
   try {
     const products = await getProductsList();
-    const displayProducts = products.filter((p) => p.id > 0);
+    const displayProducts = products.filter((p) => p.id > 0).slice(0, 40);
     return displayProducts.map((p) => ({
       slug: createSlug(p.id, p.name, p.brand, p.model),
     }));
