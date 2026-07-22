@@ -813,7 +813,7 @@ function StoreContent() {
                           {/* Content block */}
                           <div className="flex flex-col flex-1">
                             <span className="text-[0.62rem] font-black text-slate-400 uppercase tracking-wider mb-1 font-en">
-                              {product.brand ? product.brand.toUpperCase() : "SPARE PARTS"}
+                              {product.brand || "SPARE PARTS"}
                             </span>
                             <Link href={`/store/${createSlug(product.id, product.name, product.brand, product.model)}`}>
                               <h3 className="text-xs sm:text-sm font-black text-slate-800 leading-snug line-clamp-2 mb-1 hover:text-[#2d7a1f] transition-colors cursor-pointer">

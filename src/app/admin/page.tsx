@@ -1215,7 +1215,7 @@ export default function AdminPage() {
     };
     
     if (updatedProd.brand) {
-      updatedProd.brandText = brandMap[updatedProd.brand.toLowerCase()] || updatedProd.brand;
+      updatedProd.brandText = updatedProd.brand;
     }
 
     if (updatedProd.originalPrice && Number(updatedProd.originalPrice) <= Number(updatedProd.price)) {

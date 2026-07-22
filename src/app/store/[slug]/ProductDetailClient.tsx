@@ -131,24 +131,8 @@ export default function ProductDetailClient({ product, allProducts }: ProductDet
   };
 
   const getBrandName = (brandKey: string): string => {
-    const brandMap: Record<string, string> = {
-      toyota: "تويوتا",
-      kia: "كيا",
-      hyundai: "هيونداي",
-      ford: "فورد",
-      honda: "هوندا",
-      chevrolet: "شفروليه",
-      lexus: "لكزس",
-      tesla: "تيسلا",
-      byd: "بي واي دي",
-      volkswagen: "فولكس فاجن",
-      nissan: "نيسان",
-      mitsubishi: "ميتسوبيشي",
-      mercedes: "مرسيدس",
-      bmw: "بي إم دبليو",
-      all: "جميع السيارات",
-    };
-    return brandMap[brandKey.toLowerCase()] || brandKey.toUpperCase();
+    if (!brandKey) return "";
+    return brandKey;
   };
 
   const getCategoryName = (categoryKey: string): string => {

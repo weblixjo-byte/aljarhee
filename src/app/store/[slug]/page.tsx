@@ -9,24 +9,8 @@ interface PageProps {
 }
 
 function getBrandName(brandKey: string): string {
-  const brandMap: Record<string, string> = {
-    toyota: "تويوتا",
-    kia: "كيا",
-    hyundai: "هيونداي",
-    ford: "فورد",
-    honda: "هوندا",
-    chevrolet: "شفروليه",
-    lexus: "لكزس",
-    tesla: "تيسلا",
-    byd: "بي واي دي",
-    volkswagen: "فولكس فاجن",
-    nissan: "نيسان",
-    mitsubishi: "ميتسوبيشي",
-    mercedes: "مرسيدس",
-    bmw: "بي إم دبليو",
-    all: "جميع السيارات",
-  };
-  return brandMap[brandKey.toLowerCase()] || brandKey.toUpperCase();
+  if (!brandKey) return "";
+  return brandKey;
 }
 
 // 1. Generate Static Params for build-time rendering (blazing fast loading!)
