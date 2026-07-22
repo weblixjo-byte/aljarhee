@@ -113,6 +113,65 @@ export default function RootLayout({
       className={`${cairo.variable} ${outfit.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-white text-text-primary">
+        {/* ─── Global Schema.org AutoPartsStore & WebSite Knowledge Graph ─── */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "AutoPartsStore",
+                  "@id": `${SITE_URL}/#organization`,
+                  name: "الجارحي لقطع غيار السيارات",
+                  alternateName: "Al-Jarhee Spare Parts",
+                  url: SITE_URL,
+                  logo: `${SITE_URL}/assets/images/logo.png`,
+                  image: `${SITE_URL}/assets/images/logo.png`,
+                  description:
+                    "الجارحي لقطع غيار السيارات - التشكيلة الأضخم من قطع غيار محركات الهايبرد، الكهرباء، والميكانيك في الأردن بجودة مضمونة وكفالة حقيقية.",
+                  telephone: "+962789089842",
+                  priceRange: "$$",
+                  address: {
+                    "@type": "PostalAddress",
+                    streetAddress: "البيادر",
+                    addressLocality: "عمان",
+                    addressCountry: "JO",
+                  },
+                  geo: {
+                    "@type": "GeoCoordinates",
+                    latitude: "31.95",
+                    longitude: "35.91",
+                  },
+                  openingHoursSpecification: {
+                    "@type": "OpeningHoursSpecification",
+                    dayOfWeek: [
+                      "Saturday",
+                      "Sunday",
+                      "Monday",
+                      "Tuesday",
+                      "Wednesday",
+                      "Thursday",
+                    ],
+                    opens: "08:00",
+                    closes: "20:00",
+                  },
+                },
+                {
+                  "@type": "WebSite",
+                  "@id": `${SITE_URL}/#website`,
+                  url: SITE_URL,
+                  name: "الجارحي لقطع غيار السيارات",
+                  publisher: {
+                    "@id": `${SITE_URL}/#organization`,
+                  },
+                  inLanguage: "ar-JO",
+                },
+              ],
+            }),
+          }}
+        />
+
         <ToastProvider>
           <ProductProvider>
             <ClientLayout>{children}</ClientLayout>
