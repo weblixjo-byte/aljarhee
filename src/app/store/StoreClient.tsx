@@ -33,7 +33,7 @@ const BRANDS = [
     key: "toyota",
     name: "تويوتا",
     logo: (
-      <svg viewBox="0 0 100 65" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300 fill-current" aria-hidden="true">
+      <svg viewBox="0 0 100 65" className="w-28 sm:w-32 h-auto transition-transform duration-300 fill-current" aria-hidden="true">
         <path d="M50 0C22.4 0 0 14.5 0 32.5S22.4 65 50 65s50-14.5 50-32.5S77.6 0 50 0zm0 58.5C26.5 58.5 7.5 46.8 7.5 32.5S26.5 6.5 50 6.5s42.5 11.7 42.5 26S73.5 58.5 50 58.5z"/>
         <path d="M50 8.5C36.2 8.5 25 19.3 25 32.5c0 10.7 7.4 19.8 17.5 22.9V49c-6.8-2.6-11.5-9.1-11.5-16.5 0-9.9 8.5-18 19-18s19 8.1 19 18c0 7.4-4.7 13.9-11.5 16.5v6.4c10.1-3.1 17.5-12.2 17.5-22.9 0-13.2-11.2-24-25-24z"/>
         <path d="M50 14.5c-4.1 0-7.5 8.1-7.5 18s3.4 18 7.5 18 7.5-8.1 7.5-18-3.4-18-7.5-18zm0 31.5c-1.9 0-3.5-6.1-3.5-13.5s1.6-13.5 3.5-13.5 3.5 6.1 3.5 13.5-1.6 13.5-3.5 13.5z"/>
@@ -44,7 +44,7 @@ const BRANDS = [
     key: "lexus",
     name: "لكزس",
     logo: (
-      <svg viewBox="0 0 120 80" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="5" aria-hidden="true">
+      <svg viewBox="0 0 120 80" className="w-28 sm:w-32 h-auto transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth="5" aria-hidden="true">
         <ellipse cx="60" cy="35" rx="48" ry="28" />
         <path d="M35 25 L50 53 L85 24 M50 53 L90 53" strokeLinecap="round" strokeLinejoin="round" strokeWidth="5" />
         <text x="60" y="76" fontFamily="var(--font-outfit), sans-serif" fontSize="11" fontWeight="900" letterSpacing="4" textAnchor="middle" fill="currentColor" stroke="none">LEXUS</text>
@@ -55,7 +55,7 @@ const BRANDS = [
     key: "nissan",
     name: "نيسان",
     logo: (
-      <svg viewBox="0 0 100 100" className="w-20 h-auto transition-transform group-hover:scale-105 duration-300 fill-current" aria-hidden="true">
+      <svg viewBox="0 0 100 100" className="w-24 sm:w-28 h-auto transition-transform duration-300 fill-current" aria-hidden="true">
         <path d="M50 10C27.9 10 10 27.9 10 50s17.9 40 40 40 40-17.9 40-40-17.9-40-40-40zm0 72c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32z"/>
         <rect x="5" y="42" width="90" height="16" rx="2" />
         <text x="50" y="52" fontFamily="var(--font-outfit), sans-serif" fontSize="10" fontWeight="bold" letterSpacing="2" textAnchor="middle" fill="white">NISSAN</text>
@@ -66,7 +66,7 @@ const BRANDS = [
     key: "ford",
     name: "فورد",
     logo: (
-      <svg viewBox="0 0 120 70" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="4" aria-hidden="true">
+      <svg viewBox="0 0 120 70" className="w-28 sm:w-32 h-auto transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth="4" aria-hidden="true">
         <ellipse cx="60" cy="35" rx="52" ry="28" />
         <ellipse cx="60" cy="35" rx="48" ry="24" strokeWidth="1.5" />
         <text x="60" y="44" fontFamily="Georgia, serif" fontSize="24" fontWeight="bold" fontStyle="italic" textAnchor="middle" fill="currentColor" stroke="none">Ford</text>
@@ -77,7 +77,7 @@ const BRANDS = [
     key: "lincoln",
     name: "لينكولن",
     logo: (
-      <svg viewBox="0 0 120 80" className="w-24 h-auto transition-transform group-hover:scale-105 duration-300" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+      <svg viewBox="0 0 120 80" className="w-28 sm:w-32 h-auto transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
         <rect x="48" y="10" width="24" height="42" rx="10" />
         <line x1="60" y1="15" x2="60" y2="47" strokeWidth="2.5" />
         <line x1="52" y1="31" x2="68" y2="31" strokeWidth="2.5" />
@@ -441,20 +441,33 @@ function StoreContent() {
                 </p>
               </div>
             ) : (
-              <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 max-w-5xl mx-auto mb-6">
+              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto px-2 sm:px-4 mb-8">
                 {dynamicBrands.map((brand) => (
                   <button
                     key={brand.key}
                     onClick={() => handleBrandSelect(brand.key)}
-                    className="group bg-white hover:bg-slate-50/50 border border-slate-200 hover:border-[#2d7a1f] rounded-3xl p-8 w-[160px] h-[160px] sm:w-[200px] sm:h-[200px] flex flex-col items-center justify-center gap-5 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_12px_45px_rgba(45,122,31,0.06)] hover:-translate-y-1"
+                    className="group relative bg-white hover:bg-gradient-to-b hover:from-white hover:to-green-50/40 border-2 border-slate-100 hover:border-[#2d7a1f]/60 rounded-[2.2rem] p-6 sm:p-8 w-[calc(50%-8px)] sm:w-[calc(33.333%-16px)] md:w-[210px] lg:w-[220px] min-h-[210px] sm:min-h-[240px] flex flex-col items-center justify-between gap-4 transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_20px_45px_rgba(45,122,31,0.14)] hover:-translate-y-2 overflow-hidden"
                     aria-label={brand.name}
                   >
-                    <div className="text-slate-700 group-hover:text-[#2d7a1f] transition-colors duration-300 flex items-center justify-center h-20 w-full overflow-hidden">
-                      {brand.logo}
+                    {/* Subtle hover background glow */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-[#2d7a1f]/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                    {/* Logo container */}
+                    <div className="text-slate-700 group-hover:text-[#2d7a1f] transition-colors duration-300 flex items-center justify-center h-28 sm:h-32 w-full overflow-hidden">
+                      <div className="transform group-hover:scale-110 transition-transform duration-300 flex items-center justify-center w-full h-full">
+                        {brand.logo}
+                      </div>
                     </div>
-                    <span className="text-xs sm:text-sm font-black text-slate-800 group-hover:text-[#2d7a1f] transition-colors">
-                      {brand.name}
-                    </span>
+
+                    {/* Brand Name & Action link */}
+                    <div className="flex flex-col items-center gap-1 z-10 w-full">
+                      <span className="text-sm sm:text-base font-black text-slate-800 group-hover:text-[#2d7a1f] tracking-wide transition-colors">
+                        {brand.name}
+                      </span>
+                      <span className="text-[11px] font-bold text-[#2d7a1f] opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 flex items-center gap-1">
+                        تصفح الموديلات <span>←</span>
+                      </span>
+                    </div>
                   </button>
                 ))}
               </div>
