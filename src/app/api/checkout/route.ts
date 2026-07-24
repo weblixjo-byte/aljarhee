@@ -77,9 +77,26 @@ export async function POST(req: NextRequest) {
 
     // 4. Send Notifications (Pushover + Web3Forms Email) if configured
     try {
-      const pushoverToken = process.env.PUSHOVER_TOKEN || "";
-      const pushoverUser = process.env.PUSHOVER_USER || "";
-      const web3formsKey = process.env.WEB3FORMS_KEY || process.env.NEXT_PUBLIC_WEB3FORMS_KEY || "8c7551cf-f507-4dec-b670-4383097ee4cb";
+      let pushoverToken = process.env.PUSHOVER_TOKEN || "";
+      let pushoverUser = process.env.PUSHOVER_USER || "";
+      let web3formsKey = process.env.WEB3FORMS_KEY || process.env.NEXT_PUBLIC_WEB3FORMS_KEY || "8c7551cf-f507-4dec-b670-4383097ee4cb";
+
+      if (!pushoverToken || !pushoverUser || !web3formsKey) {
+        const { data: settingsRow } = await supabaseAdmin
+          .from("products")
+          .select("description")
+          .eq("id", 0)
+          .single();
+
+        if (settingsRow && settingsRow.description) {
+          try {
+            const settings = JSON.parse(settingsRow.description);
+            if (!pushoverToken && settings.pushoverToken) pushoverToken = settings.pushoverToken;
+            if (!pushoverUser && settings.pushoverUser) pushoverUser = settings.pushoverUser;
+            if (!web3formsKey && settings.web3formsKey) web3formsKey = settings.web3formsKey;
+          } catch (e) {}
+        }
+      }
 
       console.log(`[Checkout] web3formsKey present: ${!!web3formsKey}, pushover present: ${!!(pushoverToken && pushoverUser)}`);
 

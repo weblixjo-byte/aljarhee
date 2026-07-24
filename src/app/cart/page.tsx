@@ -76,8 +76,24 @@ export default function CartPage() {
     window.dispatchEvent(new Event("cartUpdated"));
   };
 
+  const JO_CITIES = [
+    { key: "Amman", name: "عمان (العاصمة)", fee: 3 },
+    { key: "Irbid", name: "إربد", fee: 5 },
+    { key: "Zarqa", name: "الزرقاء", fee: 5 },
+    { key: "Balqa", name: "البلقاء (السلط)", fee: 5 },
+    { key: "Mafraq", name: "المفرق", fee: 5 },
+    { key: "Jerash", name: "جرش", fee: 5 },
+    { key: "Ajloun", name: "عجلون", fee: 5 },
+    { key: "Madaba", name: "مأدبا", fee: 5 },
+    { key: "Karak", name: "الكرك", fee: 5 },
+    { key: "Tafilah", name: "الطفيلة", fee: 5 },
+    { key: "Maan", name: "معان", fee: 5 },
+    { key: "Aqaba", name: "العقبة", fee: 5 },
+  ];
+
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
-  const shippingFee = subtotal >= 20 ? 0 : 5;
+  const selectedCityObj = JO_CITIES.find((c) => c.key === customerCity) || JO_CITIES[0];
+  const shippingFee = subtotal >= 20 ? 0 : selectedCityObj.fee;
   const total = subtotal + shippingFee;
 
   // Handle direct dashboard checkout submission
@@ -165,7 +181,7 @@ export default function CartPage() {
             <div className="flex justify-between text-slate-500 font-bold">
               <span>العنوان:</span>
               <span className="text-slate-800 font-black">
-                {customerCity === "Amman" ? "عمان" : customerCity === "Zarqa" ? "الزرقاء" : customerCity === "Irbid" ? "إربد" : customerCity === "Salt" ? "السلط" : "باقي المحافظات"} - {customerAddress}
+                {selectedCityObj ? selectedCityObj.name : customerCity} - {customerAddress}
               </span>
             </div>
             <div className="flex justify-between text-slate-500 font-bold border-t border-slate-200/50 pt-2 mt-1">
@@ -332,6 +348,25 @@ export default function CartPage() {
                   />
                 </div>
 
+                {/* Free Shipping Progress Notice */}
+                {subtotal > 0 && (
+                  <div className={`p-3 rounded-xl border text-xs font-bold flex items-center justify-between gap-2 transition-all ${
+                    subtotal >= 20 
+                      ? "bg-emerald-50/80 border-emerald-200 text-[#2d7a1f]" 
+                      : "bg-amber-50/80 border-amber-200 text-amber-800"
+                  }`}>
+                    {subtotal >= 20 ? (
+                      <span className="font-black flex items-center gap-1.5">
+                        <span>🎉 مبروك! طلبك فوق 20 د.أ وحصلت على توصيل مجاني لكل المحافظات.</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5">
+                        <span>🚚 أضف بضائع بقيمة <strong className="font-en font-black text-amber-900">{(20 - subtotal).toFixed(1)} د.أ</strong> إضافية للحصول على توصيل مجاني!</span>
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Select City */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[0.7rem] font-black text-slate-600 flex items-center gap-1.5">
@@ -343,11 +378,11 @@ export default function CartPage() {
                     onChange={(e) => setCustomerCity(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none focus:border-brand-green focus:bg-white cursor-pointer text-right appearance-none font-sans"
                   >
-                    <option value="Amman">العاصمة عمان (توصيل 5 د.أ / مجاني فوق 20 د.أ)</option>
-                    <option value="Zarqa">الزرقاء (توصيل 5 د.أ / مجاني فوق 20 د.أ)</option>
-                    <option value="Irbid">إربد (توصيل 5 د.أ / مجاني فوق 20 د.أ)</option>
-                    <option value="Salt">السلط (توصيل 5 د.أ / مجاني فوق 20 د.أ)</option>
-                    <option value="Others">محافظة أخرى (توصيل 5 د.أ / مجاني فوق 20 د.أ)</option>
+                    {JO_CITIES.map((city) => (
+                      <option key={city.key} value={city.key}>
+                        {city.name} {subtotal >= 20 ? "(توصيل مجاني 🎉)" : `(توصيل ${city.fee} د.أ - مجاني فوق 20 د.أ)`}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
