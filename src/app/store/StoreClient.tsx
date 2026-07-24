@@ -940,15 +940,16 @@ function StoreContent() {
 
                     return (
                       <div className="flex items-center justify-center gap-2 mt-10 pt-5 border-t border-slate-100 flex-wrap" dir="rtl">
-                        {/* Next Button ("التالي") */}
-                        <button
-                          onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                          disabled={currentPage === totalPages}
-                          className="h-9 px-4 rounded-xl font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed shadow-xs whitespace-nowrap"
-                          aria-label="الصفحة التالية"
-                        >
-                          التالي
-                        </button>
+                        {/* Back Button ("رجوع") - shown when currentPage > 1 */}
+                        {currentPage > 1 && (
+                          <button
+                            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                            className="h-9 px-4 rounded-xl font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-700 hover:bg-slate-50 shadow-xs whitespace-nowrap"
+                            aria-label="رجوع للصفحة السابقة"
+                          >
+                            رجوع
+                          </button>
+                        )}
 
                         {/* Page Numbers ("الصفحة X") */}
                         {pages.map((page, i) =>
@@ -973,16 +974,15 @@ function StoreContent() {
                           )
                         )}
 
-                        {/* Back Button ("رجوع") on the left - only shown when currentPage > 1 */}
-                        {currentPage > 1 && (
-                          <button
-                            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                            className="h-9 px-4 rounded-xl font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-700 hover:bg-slate-50 shadow-xs whitespace-nowrap"
-                            aria-label="رجوع للصفحة السابقة"
-                          >
-                            رجوع
-                          </button>
-                        )}
+                        {/* Next Button ("التالي") */}
+                        <button
+                          onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                          disabled={currentPage === totalPages}
+                          className="h-9 px-4 rounded-xl font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed shadow-xs whitespace-nowrap"
+                          aria-label="الصفحة التالية"
+                        >
+                          التالي
+                        </button>
                       </div>
                     );
                   })()}
