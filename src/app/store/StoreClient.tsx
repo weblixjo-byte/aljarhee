@@ -948,15 +948,15 @@ function StoreContent() {
 
                     return (
                       <div className="flex items-center justify-center gap-2 mt-10 pt-5 border-t border-slate-100 flex-wrap" dir="rtl">
-                        {/* Back Button ("رجوع") - shown when currentPage > 1 */}
+                        {/* Back Arrow Button - shown when currentPage > 1 */}
                         {currentPage > 1 && (
                           <button
                             type="button"
                             onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                            className="h-9 px-4 rounded-xl font-black text-xs transition-all border border-amber-200/80 cursor-pointer flex items-center justify-center bg-amber-50/50 text-[#e0a61b] hover:bg-amber-100/60 shadow-xs whitespace-nowrap"
-                            aria-label="رجوع للصفحة السابقة"
+                            className="h-9 w-9 rounded-xl font-black text-xs transition-all border border-amber-200/80 cursor-pointer flex items-center justify-center bg-amber-50/50 text-[#e0a61b] hover:bg-amber-100/60 shadow-xs"
+                            aria-label="الصفحة السابقة"
                           >
-                            رجوع
+                            <ChevronRight size={18} strokeWidth={2.5} />
                           </button>
                         )}
 
@@ -984,15 +984,15 @@ function StoreContent() {
                           )
                         )}
 
-                        {/* Next Button ("التالي") */}
+                        {/* Next Arrow Button */}
                         <button
                           type="button"
                           onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                           disabled={currentPage === totalPages}
-                          className="h-9 px-4 rounded-xl font-black text-xs transition-all border border-amber-200/80 cursor-pointer flex items-center justify-center bg-amber-50/50 text-[#e0a61b] hover:bg-amber-100/60 disabled:opacity-30 disabled:cursor-not-allowed shadow-xs whitespace-nowrap"
+                          className="h-9 w-9 rounded-xl font-black text-xs transition-all border border-amber-200/80 cursor-pointer flex items-center justify-center bg-amber-50/50 text-[#e0a61b] hover:bg-amber-100/60 disabled:opacity-30 disabled:cursor-not-allowed shadow-xs"
                           aria-label="الصفحة التالية"
                         >
-                          التالي
+                          <ChevronLeft size={18} strokeWidth={2.5} />
                         </button>
                       </div>
                     );
