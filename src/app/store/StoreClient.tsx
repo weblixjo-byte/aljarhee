@@ -101,20 +101,28 @@ function StoreContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Synchronise with URL parameters if loaded directly
-  // Synchronise with URL parameters if loaded directly or on back navigation
+  // Synchronise with URL parameters on load, URL changes, and browser Back/Forward navigation (popstate)
   useEffect(() => {
-    const brandParam = searchParams.get("brand");
-    const modelParam = searchParams.get("model");
-    const yearParam = searchParams.get("year");
-    const categoryParam = searchParams.get("category");
-    const queryParam = searchParams.get("query");
+    const syncWithUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const brandParam = params.get("brand");
+      const modelParam = params.get("model");
+      const yearParam = params.get("year");
+      const categoryParam = params.get("category");
+      const queryParam = params.get("query");
 
-    setSelectedBrand(brandParam);
-    setSelectedModel(modelParam);
-    setSelectedYear(yearParam);
-    setSelectedCategory(categoryParam);
-    setSearchQuery(queryParam || "");
+      setSelectedBrand(brandParam);
+      setSelectedModel(modelParam);
+      setSelectedYear(yearParam);
+      setSelectedCategory(categoryParam);
+      setSearchQuery(queryParam || "");
+      setCurrentPage(1);
+    };
+
+    syncWithUrl();
+
+    window.addEventListener("popstate", syncWithUrl);
+    return () => window.removeEventListener("popstate", syncWithUrl);
   }, [searchParams]);
 
   if (loading) {
@@ -240,6 +248,30 @@ function StoreContent() {
         selectedModel || ""
       )}&year=${encodeURIComponent(selectedYear || "")}&category=${encodeURIComponent(catKey)}`
     );
+  };
+
+  // Step-by-step back navigation handler
+  const goBackOneStep = () => {
+    if (selectedCategory) {
+      // Step 3 -> Step 2: Return to Category choice (keep brand, model, year)
+      setSelectedCategory(null);
+      setCurrentPage(1);
+      router.push(
+        `/store?brand=${selectedBrand}&model=${encodeURIComponent(
+          selectedModel || ""
+        )}&year=${encodeURIComponent(selectedYear || "")}`
+      );
+    } else if (selectedModel && selectedYear) {
+      // Step 2 -> Step 1: Return to Model choice (keep brand)
+      setSelectedModel(null);
+      setSelectedYear(null);
+      setSelectedCategory(null);
+      setCurrentPage(1);
+      router.push(`/store?brand=${selectedBrand}`);
+    } else if (selectedBrand) {
+      // Step 1 -> Step 0: Return to Brand choice
+      resetAll();
+    }
   };
 
   const resetAll = () => {
@@ -486,11 +518,11 @@ function StoreContent() {
                 </span>
               </div>
               <button
-                onClick={resetAll}
-                className="flex items-center gap-1 text-slate-400 hover:text-[#2d7a1f] font-bold text-xs bg-slate-50 px-3.5 py-2 rounded-xl border-0 cursor-pointer transition-all"
+                onClick={goBackOneStep}
+                className="flex items-center gap-1.5 text-[#2d7a1f] bg-green-50 hover:bg-green-100 border border-green-200 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
               >
-                <span>رجوع للماركات</span>
                 <ArrowRight size={13} />
+                <span>رجوع للماركات</span>
               </button>
             </div>
 
@@ -573,11 +605,11 @@ function StoreContent() {
                 </span>
               </div>
               <button
-                onClick={() => router.push(`/store?brand=${selectedBrand}`)}
-                className="flex items-center gap-1 text-slate-400 hover:text-[#2d7a1f] font-bold text-xs bg-slate-50 px-3.5 py-2 rounded-xl border-0 cursor-pointer transition-all"
+                onClick={goBackOneStep}
+                className="flex items-center gap-1.5 text-[#2d7a1f] bg-green-50 hover:bg-green-100 border border-green-200 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
               >
-                <span>تغيير الموديل</span>
                 <ArrowRight size={13} />
+                <span>رجوع للموديلات</span>
               </button>
             </div>
 
@@ -638,7 +670,28 @@ function StoreContent() {
 
         {/* ── Step 3: Redesigned Catalog Grid with Sticky Sidebar ── */}
         {step === 3 && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-fade-in">
+          <div className="flex flex-col gap-6 animate-fade-in">
+            {/* Step 3 Context Bar & Step Back button */}
+            <div className="bg-white border border-slate-100 rounded-2xl p-4 sm:p-5 shadow-xs flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">المجال المحدد:</span>
+                <span className="text-xs font-black text-[#2d7a1f]">
+                  {dynamicBrands.find((b) => b.key === selectedBrand || (selectedBrand && isSameBrand(b.key, selectedBrand)) || (selectedBrand && isSameBrand(b.name, selectedBrand)))?.name || selectedBrand?.toUpperCase()}
+                  {selectedModel ? ` · ${selectedModel} (${selectedYear})` : ""}
+                  {selectedCategory ? ` · ${selectedCategory}` : ""}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={goBackOneStep}
+                className="flex items-center gap-1.5 text-[#2d7a1f] bg-green-50 hover:bg-green-100 border border-green-200 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95 whitespace-nowrap"
+              >
+                <ArrowRight size={14} />
+                <span>رجوع خطوة للخلف</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             
             {/* Sticky Sidebar Filter Panel — hidden on mobile, visible on desktop */}
             <div className="hidden lg:flex lg:col-span-1 flex-col gap-6 bg-white border border-slate-100 p-6 rounded-3xl shadow-xs text-right self-start sticky top-[100px] z-10">
@@ -872,7 +925,7 @@ function StoreContent() {
                     })}
                   </div>
 
-                  {/* Ellipsis Pagination */}
+                  {/* Custom Arabic Pagination */}
                   {totalPages > 1 && (() => {
                     const delta = 2;
                     const pages: (number | "...")[] = [];
@@ -886,46 +939,50 @@ function StoreContent() {
                     if (totalPages > 1) pages.push(totalPages);
 
                     return (
-                      <div className="flex items-center justify-center gap-1.5 mt-10 pt-5 border-t border-slate-100 font-en flex-wrap">
+                      <div className="flex items-center justify-center gap-2 mt-10 pt-5 border-t border-slate-100 flex-wrap" dir="rtl">
+                        {/* Next Button ("التالي") */}
                         <button
-                          onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                          disabled={currentPage === 1}
-                          className="w-9 h-9 rounded-lg font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-650 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                          aria-label="الصفحة السابقة"
+                          onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                          disabled={currentPage === totalPages}
+                          className="h-9 px-4 rounded-xl font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed shadow-xs whitespace-nowrap"
+                          aria-label="الصفحة التالية"
                         >
-                          ‹
+                          التالي
                         </button>
 
+                        {/* Page Numbers ("الصفحة X") */}
                         {pages.map((page, i) =>
                           page === "..." ? (
-                            <span key={`ellipsis-${i}`} className="w-9 h-9 flex items-center justify-center text-slate-400 text-xs font-bold select-none font-sans">
+                            <span key={`ellipsis-${i}`} className="px-2 h-9 flex items-center justify-center text-slate-400 text-xs font-bold select-none">
                               …
                             </span>
                           ) : (
                             <button
                               key={page}
                               onClick={() => handlePageChange(page as number)}
-                              className={`w-9 h-9 rounded-lg font-black text-xs transition-all border-0 cursor-pointer flex items-center justify-center ${
+                              className={`h-9 px-3.5 rounded-xl font-black text-xs transition-all border cursor-pointer flex items-center justify-center whitespace-nowrap ${
                                 currentPage === page
-                                  ? "bg-[#2d7a1f] text-white shadow-md shadow-[#2d7a1f]/20"
-                                  : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
+                                  ? "bg-[#2d7a1f] text-white border-[#2d7a1f] shadow-md shadow-[#2d7a1f]/20"
+                                  : "bg-white text-slate-700 hover:bg-slate-50 border-slate-200"
                               }`}
                               aria-label={`صفحة ${page}`}
                               aria-current={currentPage === page ? "page" : undefined}
                             >
-                              {page}
+                              الصفحة {page}
                             </button>
                           )
                         )}
 
-                        <button
-                          onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                          disabled={currentPage === totalPages}
-                          className="w-9 h-9 rounded-lg font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-650 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
-                          aria-label="الصفحة التالية"
-                        >
-                          ›
-                        </button>
+                        {/* Back Button ("رجوع") on the left - only shown when currentPage > 1 */}
+                        {currentPage > 1 && (
+                          <button
+                            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                            className="h-9 px-4 rounded-xl font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-700 hover:bg-slate-50 shadow-xs whitespace-nowrap"
+                            aria-label="رجوع للصفحة السابقة"
+                          >
+                            رجوع
+                          </button>
+                        )}
                       </div>
                     );
                   })()}
@@ -933,7 +990,8 @@ function StoreContent() {
               )}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
       </div>
     </div>
