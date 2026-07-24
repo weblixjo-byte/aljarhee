@@ -354,13 +354,13 @@ function StoreContent() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    if (catalogRef.current) {
-      const yOffset = -100; // Account for sticky navbar
-      const y = catalogRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-      window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
-    } else {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    setTimeout(() => {
+      if (catalogRef.current) {
+        catalogRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }, 50);
   };
 
   const isSearchActive = searchQuery.trim() !== "";
@@ -395,7 +395,7 @@ function StoreContent() {
         </div>
       </div>
 
-      <div ref={catalogRef} className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div ref={catalogRef} className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-28">
         
         {/* ── Breadcrumb Navigation ── */}
         {!isSearchActive && (
@@ -951,6 +951,7 @@ function StoreContent() {
                         {/* Back Button ("رجوع") - shown when currentPage > 1 */}
                         {currentPage > 1 && (
                           <button
+                            type="button"
                             onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                             className="h-9 px-4 rounded-xl font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-700 hover:bg-slate-50 shadow-xs whitespace-nowrap"
                             aria-label="رجوع للصفحة السابقة"
@@ -967,6 +968,7 @@ function StoreContent() {
                             </span>
                           ) : (
                             <button
+                              type="button"
                               key={page}
                               onClick={() => handlePageChange(page as number)}
                               className={`h-9 px-3.5 rounded-xl font-black text-xs transition-all border cursor-pointer flex items-center justify-center whitespace-nowrap ${
@@ -984,6 +986,7 @@ function StoreContent() {
 
                         {/* Next Button ("التالي") */}
                         <button
+                          type="button"
                           onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                           disabled={currentPage === totalPages}
                           className="h-9 px-4 rounded-xl font-black text-xs transition-all border border-slate-200 cursor-pointer flex items-center justify-center bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed shadow-xs whitespace-nowrap"
