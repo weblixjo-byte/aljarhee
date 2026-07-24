@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useProducts } from "../../context/ProductContext";
@@ -350,9 +350,17 @@ function StoreContent() {
     currentPage * itemsPerPage
   );
 
+  const catalogRef = useRef<HTMLDivElement | null>(null);
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    window.scrollTo({ top: 350, behavior: "smooth" });
+    if (catalogRef.current) {
+      const yOffset = -100; // Account for sticky navbar
+      const y = catalogRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const isSearchActive = searchQuery.trim() !== "";
@@ -387,7 +395,7 @@ function StoreContent() {
         </div>
       </div>
 
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div ref={catalogRef} className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* ── Breadcrumb Navigation ── */}
         {!isSearchActive && (
