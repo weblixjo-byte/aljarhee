@@ -1,0 +1,21 @@
+{
+  "name": "الجارحي لقطع غيار السيارات",
+  "short_name": "الجارحي",
+  "description": "التشكيلة الأضخم من قطع غيار السيارات في الأردن - هايبرد، كهرباء، ميكانيك",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["shopping", "automotive"],
+  "orientation": "any"
+}
