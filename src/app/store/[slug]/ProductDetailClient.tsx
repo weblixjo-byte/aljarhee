@@ -330,7 +330,9 @@ export default function ProductDetailClient({ product, allProducts }: ProductDet
                 alt={product.name}
                 className="w-4/5 h-4/5 object-contain group-hover:scale-105 transition-transform duration-500"
                 onError={(e) => {
-                  e.currentTarget.src = "/assets/images/placeholder-product.png";
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = "/assets/images/logo.png";
+                  e.currentTarget.className = "w-1/2 h-1/2 object-contain opacity-80";
                 }}
               />
               {hasDiscount && (

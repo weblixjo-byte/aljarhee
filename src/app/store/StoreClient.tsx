@@ -852,7 +852,7 @@ function StoreContent() {
                             href={`/store/${createSlug(product.id, product.name, product.brand, product.model)}`}
                             className="relative w-full bg-slate-50/70 rounded-2xl flex items-center justify-center overflow-hidden mb-4 aspect-square cursor-pointer"
                           >
-                            {product.image && !product.image.includes("placeholder") ? (
+                            {product.image ? (
                               <img
                                 src={product.image.startsWith("assets") ? `/${product.image}` : product.image}
                                 alt={product.name}
