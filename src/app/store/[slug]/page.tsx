@@ -27,7 +27,7 @@ export async function generateStaticParams() {
 }
 
 // 2. Incremental Static Regeneration (ISR) configuration
-export const revalidate = 60; // Regenerate pages in the background every 60 seconds
+export const revalidate = 3600; // Cache page at Netlify Edge CDN and revalidate in background every hour
 
 // 3. Dynamic Server-Side SEO Metadata
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

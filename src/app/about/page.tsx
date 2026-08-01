@@ -44,6 +44,9 @@ export const metadata: Metadata = {
   },
 };
 
+// ISR Caching configuration for Netlify Edge CDN
+export const revalidate = 86400;
+
 export default function AboutPage() {
   return <AboutClient />;
 }
