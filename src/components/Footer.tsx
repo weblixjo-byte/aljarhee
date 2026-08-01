@@ -28,12 +28,12 @@ export default function Footer() {
           <div className="flex flex-col gap-5">
             <div className="flex items-center">
               <img
-                src="/assets/images/PPP2.webp"
+                src="/assets/images/newlogo.jpeg"
                 alt="شعار الجارحي لقطع السيارات"
-                className="h-14 w-auto object-contain brightness-0 invert"
+                className="h-14 w-auto object-contain rounded-lg"
                 onError={(e) => {
                   e.currentTarget.src = "/assets/images/logo.png";
-                  e.currentTarget.className = "h-14 w-auto object-contain";
+                  e.currentTarget.className = "h-14 w-auto object-contain rounded-lg";
                 }}
               />
             </div>

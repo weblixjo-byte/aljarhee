@@ -187,9 +187,9 @@ export default function Header() {
             {/* Right Side: Brand Logo */}
             <Link href="/" className="flex items-center shrink-0">
               <img
-                src="/assets/images/PPP2.webp"
+                src="/assets/images/newlogo.jpeg"
                 alt="شعار الجارحي لقطع السيارات"
-                className="h-[52px] w-auto object-contain transition-transform duration-300 hover:scale-103"
+                className="h-[52px] w-auto object-contain rounded-lg transition-transform duration-300 hover:scale-103"
                 onError={(e) => {
                   e.currentTarget.src = "/assets/images/logo.png";
                 }}
