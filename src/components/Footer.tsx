@@ -28,7 +28,7 @@ export default function Footer() {
           <div className="flex flex-col gap-5">
             <div className="flex items-center">
               <img
-                src="/assets/images/newlogo.jpeg"
+                src="/assets/images/logo.png"
                 alt="شعار الجارحي لقطع السيارات"
                 className="h-14 w-auto object-contain rounded-lg"
                 onError={(e) => {
