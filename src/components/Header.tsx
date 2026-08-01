@@ -185,11 +185,11 @@ export default function Header() {
             </nav>
 
             {/* Right Side: Brand Logo */}
-            <Link href="/" className="flex items-center shrink-0 py-1">
+            <Link href="/" className="flex items-center shrink-0">
               <img
                 src="/assets/images/logo.png"
                 alt="شعار الجارحي لقطع السيارات"
-                className="h-[78px] sm:h-[88px] md:h-[96px] w-auto object-contain rounded-xl transition-transform duration-300 hover:scale-105 py-0.5"
+                className="h-[78px] sm:h-[88px] md:h-[96px] w-auto object-contain transition-transform duration-300 hover:scale-105"
                 onError={(e) => {
                   e.currentTarget.src = "/assets/images/logo.png";
                 }}

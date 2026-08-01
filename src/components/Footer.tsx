@@ -30,10 +30,10 @@ export default function Footer() {
               <img
                 src="/assets/images/logo.png"
                 alt="شعار الجارحي لقطع السيارات"
-                className="h-20 sm:h-24 md:h-28 w-auto object-contain rounded-xl"
+                className="h-20 sm:h-24 md:h-28 w-auto object-contain"
                 onError={(e) => {
                   e.currentTarget.src = "/assets/images/logo.png";
-                  e.currentTarget.className = "h-20 sm:h-24 md:h-28 w-auto object-contain rounded-xl";
+                  e.currentTarget.className = "h-20 sm:h-24 md:h-28 w-auto object-contain";
                 }}
               />
             </div>
