@@ -1,54 +1,45 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const slides = [
-  { id: 1, image: "/assets/images/HERO (1).jpg", alt: "هيرو سلايدر 1 - الجارحي لقطع غيار السيارات" },
-  { id: 2, image: "/assets/images/HERO (1).png", alt: "هيرو سلايدر 2 - الجارحي لقطع غيار السيارات" },
-  { id: 3, image: "/assets/images/HERO (2).png", alt: "هيرو سلايدر 3 - الجارحي لقطع غيار السيارات" },
-  { id: 4, image: "/assets/images/HERO (3).png", alt: "هيرو سلايدر 4 - الجارحي لقطع غيار السيارات" },
-  { id: 5, image: "/assets/images/HERO (4).png", alt: "هيرو سلايدر 5 - الجارحي لقطع غيار السيارات" },
-  { id: 6, image: "/assets/images/HERO (5).png", alt: "هيرو سلايدر 6 - الجارحي لقطع غيار السيارات" },
+  { id: 1, image: "/assets/images/HERO (1).jpg", alt: "الجارحي لقطع غيار السيارات - العروض والقطع 1" },
+  { id: 2, image: "/assets/images/HERO (2).jpg", alt: "الجارحي لقطع غيار السيارات - العروض والقطع 2" },
+  { id: 3, image: "/assets/images/HERO (3).jpg", alt: "الجارحي لقطع غيار السيارات - العروض والقطع 3" },
+  { id: 4, image: "/assets/images/HERO (4).jpg", alt: "الجارحي لقطع غيار السيارات - العروض والقطع 4" },
+  { id: 5, image: "/assets/images/HERO (5).jpg", alt: "الجارحي لقطع غيار السيارات - العروض والقطع 5" },
 ];
 
-const AUTOPLAY_MS = 5000;
+const AUTOPLAY_MS = 3800;
 
 export default function HeroSlider() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const touchStart = useRef<number | null>(null);
   const touchEnd = useRef<number | null>(null);
-  const MIN_SWIPE = 40; // px threshold for swipe
+  const MIN_SWIPE = 35; // px threshold for swipe
 
-  const goTo = useCallback((idx: number) => {
-    setActiveIndex(((idx % slides.length) + slides.length) % slides.length);
-  }, []);
-
-  const next = useCallback(() => goTo(activeIndex + 1), [activeIndex, goTo]);
-  const prev = useCallback(() => goTo(activeIndex - 1), [activeIndex, goTo]);
-
-  const resetTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      setActiveIndex((i) => (i + 1) % slides.length);
-    }, AUTOPLAY_MS);
-  }, []);
-
+  // 1. Bulletproof Autoplay Loop (Runs continuously without state dependency deadlocks)
   useEffect(() => {
-    resetTimer();
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [resetTimer]);
+    // Preload all slider images into browser cache immediately for zero-lag transitions
+    slides.forEach((slide) => {
+      const img = new Image();
+      img.src = slide.image;
+    });
 
-  const handleNav = useCallback(
-    (fn: () => void) => {
-      fn();
-      resetTimer();
-    },
-    [resetTimer]
-  );
+    const interval = setInterval(() => {
+      setActiveIndex((current) => (current + 1) % slides.length);
+    }, AUTOPLAY_MS);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const goTo = (idx: number) => {
+    setActiveIndex(((idx % slides.length) + slides.length) % slides.length);
+  };
+
+  const next = () => goTo(activeIndex + 1);
+  const prev = () => goTo(activeIndex - 1);
 
   // ── Touch / Swipe handlers for mobile ───────────────────────────
   const onTouchStart = (e: React.TouchEvent) => {
@@ -65,7 +56,8 @@ export default function HeroSlider() {
     const diff = touchStart.current - touchEnd.current;
     if (Math.abs(diff) >= MIN_SWIPE) {
       // In RTL layout: dragging left (diff > 0) goes next, dragging right goes prev
-      handleNav(diff > 0 ? next : prev);
+      if (diff > 0) next();
+      else prev();
     }
     touchStart.current = null;
     touchEnd.current = null;
@@ -94,18 +86,15 @@ export default function HeroSlider() {
                 alt={slide.alt}
                 className="w-full h-full object-contain select-none"
                 draggable={false}
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
               />
             </div>
           );
         })}
       </div>
 
-      {/* ── Arrows ── */}
+      {/* ── Navigation Arrows ── */}
       <button
-        onClick={() => handleNav(prev)}
+        onClick={prev}
         className="absolute top-1/2 -translate-y-1/2 left-3 md:left-6 z-20 w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/90 border border-slate-200 hover:border-brand-green text-slate-800 hover:text-brand-green flex items-center justify-center cursor-pointer transition-all shadow-sm hover:scale-105 active:scale-95"
         aria-label="البانر السابق"
       >
@@ -113,22 +102,19 @@ export default function HeroSlider() {
       </button>
 
       <button
-        onClick={() => handleNav(next)}
-        className="absolute top-1/2 -translate-y-1/2 right-3 md:right-6 z-20 w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/90 border border-slate-200 hover:border-brand-green text-slate-800 hover:text-brand-green flex items-center justify-center cursor-pointer transition-all shadow-sm hover:scale-105 active:scale-95"
+        onClick={next}
+        className="absolute top-1/2 -translate-y-1/2 right-3 md:right-6 z-20 w-9 h-9 md:w-11 md:h-11 rounded-full bg-[#2d7a1f] hover:bg-[#236118] text-white flex items-center justify-center cursor-pointer transition-all shadow-sm hover:scale-105 active:scale-95"
         aria-label="البانر التالي"
       >
         <ChevronRight size={20} strokeWidth={2.5} />
       </button>
 
-      {/* ── Dots ── */}
+      {/* ── Pagination Dots ── */}
       <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-2">
         {slides.map((_, idx) => (
           <button
             key={idx}
-            onClick={() => {
-              goTo(idx);
-              resetTimer();
-            }}
+            onClick={() => goTo(idx)}
             className={`h-2.5 rounded-full border-0 cursor-pointer transition-all duration-300 ${
               idx === activeIndex
                 ? "w-7 bg-brand-yellow"
