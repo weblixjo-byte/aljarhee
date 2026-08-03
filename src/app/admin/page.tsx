@@ -301,6 +301,8 @@ export default function AdminPage() {
     year: "",
     price: 0,
     originalPrice: undefined as number | undefined,
+    discountDays: undefined as number | undefined,
+    discountEndsAt: undefined as string | undefined,
     condition: "new",
     image: "",
     description: ""
@@ -1218,8 +1220,17 @@ export default function AdminPage() {
       updatedProd.brandText = updatedProd.brand;
     }
 
-    if (updatedProd.originalPrice && Number(updatedProd.originalPrice) <= Number(updatedProd.price)) {
+    if (updatedProd.originalPrice && Number(updatedProd.originalPrice) > Number(updatedProd.price)) {
+      if (updatedProd.discountDays && Number(updatedProd.discountDays) > 0) {
+        const days = Number(updatedProd.discountDays);
+        updatedProd.discountEndsAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+      } else {
+        updatedProd.discountEndsAt = undefined;
+      }
+    } else {
       updatedProd.originalPrice = undefined;
+      updatedProd.discountDays = undefined;
+      updatedProd.discountEndsAt = undefined;
     }
 
     const originalProd = products.find(p => p.id === updatedProd.id);
@@ -1268,9 +1279,18 @@ export default function AdminPage() {
     const maxId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 999;
     const nextId = Math.max(1000, maxId + 1);
     
+    let discountEndsAt: string | undefined = undefined;
+    if (newProd.originalPrice && Number(newProd.originalPrice) > Number(newProd.price)) {
+      if (newProd.discountDays && Number(newProd.discountDays) > 0) {
+        const days = Number(newProd.discountDays);
+        discountEndsAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+      }
+    }
+
     const productToAdd = {
       ...newProd,
       id: nextId,
+      discountEndsAt,
       featured: false,
       newArrival: false
     };
@@ -1296,6 +1316,8 @@ export default function AdminPage() {
       year: "",
       price: 0,
       originalPrice: undefined,
+      discountDays: undefined,
+      discountEndsAt: undefined,
       condition: "new",
       image: "",
       description: ""
@@ -2685,6 +2707,14 @@ export default function AdminPage() {
                               {prod.originalPrice && (
                                 <span className="text-[0.62rem] text-slate-400 line-through font-en font-bold">السعر الأصلي: {prod.originalPrice} - خصم {prod.originalPrice - prod.price} د.أ</span>
                               )}
+                              {prod.discountEndsAt && (() => {
+                                const remainingDays = Math.max(1, Math.ceil((new Date(prod.discountEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+                                return (
+                                  <span className="text-[0.62rem] text-amber-700 font-black bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 rounded-md self-start mt-0.5">
+                                    ⏳ خصم مجدول: متبقي {remainingDays} يوم
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </td>
 
@@ -2874,6 +2904,41 @@ export default function AdminPage() {
                 />
               </div>
 
+              {/* Scheduled Discount Duration */}
+              {editingProduct.originalPrice && Number(editingProduct.originalPrice) > Number(editingProduct.price) && (
+                <div className="flex flex-col gap-1.5 md:col-span-2 bg-amber-50/60 border border-amber-200/80 p-3.5 rounded-2xl">
+                  <label className="text-xs font-black text-amber-900 flex items-center justify-between">
+                    <span>⏳ مدة الخصم المجدول (بالأيام)</span>
+                    {editingProduct.discountEndsAt && (
+                      <span className="text-[10px] font-bold text-amber-700 font-en">
+                        ينتهي بتاريخ: {new Date(editingProduct.discountEndsAt).toLocaleDateString("ar-JO")}
+                      </span>
+                    )}
+                  </label>
+                  <select
+                    value={editingProduct.discountDays || 0}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, discountDays: parseInt(e.target.value) || undefined })}
+                    className="w-full bg-white border border-amber-300 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-black text-slate-800 text-right cursor-pointer font-sans"
+                  >
+                    <option value={0}>خصم دائم (بدون تاريخ انتهاء)</option>
+                    <option value={1}>يوم واحد (24 ساعة)</option>
+                    <option value={2}>يومين (2 يوم)</option>
+                    <option value={3}>3 أيام</option>
+                    <option value={4}>4 أيام</option>
+                    <option value={5}>5 أيام</option>
+                    <option value={6}>6 أيام</option>
+                    <option value={7}>أسبوع كامل (7 أيام)</option>
+                    <option value={10}>10 أيام</option>
+                    <option value={14}>أسبوعين (14 يوم)</option>
+                    <option value={20}>20 يوم</option>
+                    <option value={30}>شهر كامل (30 يوم)</option>
+                  </select>
+                  <p className="text-[10px] font-bold text-slate-500 mt-0.5">
+                    * عند انتهاء عدد الأيام المحدد، يعود سعر المنتج تلقائياً إلى السعر الأصلي ({editingProduct.originalPrice} د.أ) وتختفي شارة الخصم فوراً.
+                  </p>
+                </div>
+              )}
+
               {/* Condition */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-black text-slate-700">الحالة</label>
@@ -3048,6 +3113,36 @@ export default function AdminPage() {
                   placeholder="اتركه فارغاً في حال عدم وجود خصم"
                 />
               </div>
+
+              {/* Scheduled Discount Duration */}
+              {newProduct.originalPrice && Number(newProduct.originalPrice) > Number(newProduct.price) && (
+                <div className="flex flex-col gap-1.5 md:col-span-2 bg-amber-50/60 border border-amber-200/80 p-3.5 rounded-2xl">
+                  <label className="text-xs font-black text-amber-900 flex items-center justify-between">
+                    <span>⏳ مدة الخصم المجدول (بالأيام)</span>
+                  </label>
+                  <select
+                    value={newProduct.discountDays || 0}
+                    onChange={(e) => setNewProduct({ ...newProduct, discountDays: parseInt(e.target.value) || undefined })}
+                    className="w-full bg-white border border-amber-300 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-black text-slate-800 text-right cursor-pointer font-sans"
+                  >
+                    <option value={0}>خصم دائم (بدون تاريخ انتهاء)</option>
+                    <option value={1}>يوم واحد (24 ساعة)</option>
+                    <option value={2}>يومين (2 يوم)</option>
+                    <option value={3}>3 أيام</option>
+                    <option value={4}>4 أيام</option>
+                    <option value={5}>5 أيام</option>
+                    <option value={6}>6 أيام</option>
+                    <option value={7}>أسبوع كامل (7 أيام)</option>
+                    <option value={10}>10 أيام</option>
+                    <option value={14}>أسبوعين (14 يوم)</option>
+                    <option value={20}>20 يوم</option>
+                    <option value={30}>شهر كامل (30 يوم)</option>
+                  </select>
+                  <p className="text-[10px] font-bold text-slate-500 mt-0.5">
+                    * عند انتهاء عدد الأيام المحدد، يعود سعر المنتج تلقائياً إلى السعر الأصلي ({newProduct.originalPrice} د.أ) وتختفي شارة الخصم فوراً.
+                  </p>
+                </div>
+              )}
 
               {/* Condition */}
               <div className="flex flex-col gap-1.5">

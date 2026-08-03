@@ -873,10 +873,18 @@ function StoreContent() {
                               <Layers size={32} className="text-slate-300" />
                             )}
                             {hasDiscount && (
-                              <span className="absolute top-3 right-3 bg-red-500 text-white font-black text-[0.62rem] px-2 py-0.5 rounded-lg z-10">
+                              <span className="absolute top-3 right-3 bg-red-500 text-white font-black text-[0.62rem] px-2 py-0.5 rounded-lg z-10 shadow-xs">
                                 خصم {discountPct}%
                               </span>
                             )}
+                            {product.discountEndsAt && (() => {
+                              const remainingDays = Math.max(1, Math.ceil((new Date(product.discountEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+                              return (
+                                <span className="absolute bottom-3 right-3 bg-amber-500/90 backdrop-blur-xs text-white font-black text-[0.58rem] px-2 py-0.5 rounded-lg z-10 shadow-xs">
+                                  ⏳ متبقي {remainingDays} يوم
+                                </span>
+                              );
+                            })()}
                             {product.conditionText && (
                               <span className="absolute top-3 left-3 bg-white text-slate-600 border border-slate-200/50 font-black text-[0.62rem] px-2 py-0.5 rounded-lg z-10">
                                 {product.conditionText}

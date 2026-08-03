@@ -211,6 +211,22 @@ export default function ProductDetailClient({ product, allProducts }: ProductDet
               )}
             </div>
 
+            {/* Scheduled Discount Countdown Banner */}
+            {product.discountEndsAt && (() => {
+              const remainingDays = Math.max(1, Math.ceil((new Date(product.discountEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+              return (
+                <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-3.5 flex items-center justify-between text-amber-900 font-black text-xs shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <Clock size={16} className="text-amber-600 animate-pulse" />
+                    <span>عرض لفترة محدودة (خصم مجدول)</span>
+                  </div>
+                  <span className="bg-amber-500 text-white font-black text-[11px] px-3 py-1 rounded-xl shadow-xs">
+                    متبقي {remainingDays} يوم فقط!
+                  </span>
+                </div>
+              );
+            })()}
+
             {/* Quantity Selector & Action Buttons */}
             <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
               {/* Quantity select */}

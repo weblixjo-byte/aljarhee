@@ -11,10 +11,12 @@ export interface Product {
   condition: string;
   conditionText: string;
   image: string;
-  description: string;
+  description?: string;
   featured: boolean;
   bestSeller: boolean;
   newArrival: boolean;
+  discountDays?: number;
+  discountEndsAt?: string;
 }
 
 export const productsData: Product[] = [];

@@ -17,6 +17,26 @@ interface ProductContextType {
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
+// Helper to automatically revert expired scheduled discounts back to original price
+function normalizeDiscountExpiry(items: Product[]): Product[] {
+  const now = Date.now();
+  return items.map((p) => {
+    if (p.discountEndsAt) {
+      const endsAtTime = new Date(p.discountEndsAt).getTime();
+      if (!isNaN(endsAtTime) && now > endsAtTime) {
+        return {
+          ...p,
+          price: p.originalPrice || p.price,
+          originalPrice: undefined,
+          discountDays: undefined,
+          discountEndsAt: undefined,
+        };
+      }
+    }
+    return p;
+  });
+}
+
 export function ProductProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categorySettings, setCategorySettings] = useState<Record<string, string>>({});
@@ -77,8 +97,8 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Set state immediately
-    setProducts(initialProducts);
+    // Set state immediately with auto-normalized discounts
+    setProducts(normalizeDiscountExpiry(initialProducts));
     setCategorySettings(initialCats);
     setBrandSettings(initialBrs);
     setModelSettings(initialMdls);
@@ -94,7 +114,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
             const realProducts = data.filter((p: any) => p.id > 0);
             const settingsProduct = data.find((p: any) => p.id === 0);
             
-            setProducts(realProducts);
+            setProducts(normalizeDiscountExpiry(realProducts));
             localStorage.setItem("aljarhee_imported_products", JSON.stringify(data));
 
             if (settingsProduct && settingsProduct.description) {
