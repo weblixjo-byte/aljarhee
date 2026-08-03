@@ -301,12 +301,6 @@ export default function ProductDetailClient({ product, allProducts }: ProductDet
                   {getCategoryName(product.categoryName || product.category)}
                 </span>
               </div>
-              <div>
-                <span>حالة القطعة: </span>
-                <span className="text-slate-800 font-black">
-                  {product.conditionText} ({product.condition === "new" ? "جديد كلياً" : "مستعمل أصلي فحص"})
-                </span>
-              </div>
             </div>
 
             {/* Share & Wishlist */}
@@ -354,11 +348,6 @@ export default function ProductDetailClient({ product, allProducts }: ProductDet
               {hasDiscount && (
                 <span className="absolute top-4 right-4 bg-red-500 text-white font-black text-[0.68rem] px-2.5 py-1 rounded-lg">
                   خصم {discountPct}%
-                </span>
-              )}
-              {product.conditionText && (
-                <span className="absolute top-4 left-4 bg-slate-100 text-slate-700 border border-slate-200/50 font-black text-[0.68rem] px-2.5 py-1 rounded-lg">
-                  {product.conditionText}
                 </span>
               )}
             </div>
@@ -415,11 +404,6 @@ export default function ProductDetailClient({ product, allProducts }: ProductDet
                       {relHasDiscount && (
                         <span className="absolute top-2 right-2 bg-red-500 text-white font-black text-[0.58rem] px-1.5 py-0.5 rounded-md z-10">
                           {relDiscountPct}%
-                        </span>
-                      )}
-                      {relProduct.conditionText && (
-                        <span className="absolute top-2 left-2 bg-slate-100 text-slate-600 font-bold text-[0.58rem] px-1.5 py-0.5 rounded-md z-10">
-                          {relProduct.conditionText}
                         </span>
                       )}
                     </div>

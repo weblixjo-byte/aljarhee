@@ -888,11 +888,6 @@ function StoreContent() {
                                 </span>
                               );
                             })()}
-                            {product.conditionText && (
-                              <span className="absolute top-3 left-3 bg-white text-slate-600 border border-slate-200/50 font-black text-[0.62rem] px-2 py-0.5 rounded-lg z-10">
-                                {product.conditionText}
-                              </span>
-                            )}
                           </Link>
 
                           {/* Content block */}

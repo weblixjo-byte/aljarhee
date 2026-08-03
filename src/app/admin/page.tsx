@@ -2993,22 +2993,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Condition */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">الحالة</label>
-                <select
-                  value={editingProduct.condition}
-                  onChange={(e) => setEditingProduct({ 
-                    ...editingProduct, 
-                    condition: e.target.value,
-                    conditionText: e.target.value === "new" ? "جديد" : "مستعمل نظيف"
-                  })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
-                >
-                  <option value="new">جديد (New)</option>
-                  <option value="used">مستعمل نظيف (Used)</option>
-                </select>
-              </div>
+
 
               {/* Image URL */}
               <div className="flex flex-col gap-1.5">
@@ -3243,21 +3228,7 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Condition */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">الحالة</label>
-                <select
-                  value={newProduct.condition}
-                  onChange={(e) => setNewProduct({ 
-                    ...newProduct, 
-                    condition: e.target.value
-                  })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
-                >
-                  <option value="new">جديد (New)</option>
-                  <option value="used">مستعمل نظيف (Used)</option>
-                </select>
-              </div>
+
 
               {/* Image URL */}
               <div className="flex flex-col gap-1.5">
