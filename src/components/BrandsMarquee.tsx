@@ -62,16 +62,6 @@ export default function BrandsMarquee() {
       image: "/assets/images/brands/chevrolet.png",
     },
     {
-      name: "mercedes",
-      title: "مرسيدس",
-      image: "/assets/images/brands/mercedes.png",
-    },
-    {
-      name: "bmw",
-      title: "بي إم دبليو",
-      image: "/assets/images/brands/bmw.png",
-    },
-    {
       name: "audi",
       title: "أودي",
       image: "/assets/images/brands/audi.png",
