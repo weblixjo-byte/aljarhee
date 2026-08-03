@@ -1366,14 +1366,23 @@ export default function AdminPage() {
   };
 
   // Dynamically extract active list of categories, brands, models, and years in database
-  const activeCategories = Array.from(new Set(products.map(p => p.categoryName || p.category).filter(Boolean)));
-  const activeBrands = Array.from(new Set(products.map(p => p.brand).filter(Boolean)));
-  const activeModels = Array.from(new Set(
-    products
+  const activeCategories = Array.from(new Set([
+    ...products.map(p => p.categoryName || p.category),
+    ...Object.keys(categorySettings)
+  ].filter(Boolean)));
+
+  const activeBrands = Array.from(new Set([
+    ...products.map(p => p.brand),
+    ...Object.keys(brandSettings)
+  ].filter(Boolean)));
+
+  const activeModels = Array.from(new Set([
+    ...products
       .filter(p => manageBrand === "all" || p.brand === manageBrand)
-      .map(p => p.model)
-      .filter(Boolean)
-  ));
+      .map(p => p.model),
+    ...Object.keys(modelSettings).map(k => k.split('_')[0])
+  ].filter(Boolean)));
+
   const activeYears = Array.from(new Set(
     products
       .filter(p => (manageBrand === "all" || p.brand === manageBrand) && (manageModel === "all" || p.model === manageModel))
@@ -3206,17 +3215,17 @@ export default function AdminPage() {
 
       {/* Datalists for input suggestions */}
       <datalist id="categories-list">
-        {Array.from(new Set(products.map(p => p.categoryName || p.category).filter(Boolean))).map(c => (
+        {activeCategories.map(c => (
           <option key={c} value={c} />
         ))}
       </datalist>
       <datalist id="brands-list">
-        {Array.from(new Set(products.map(p => p.brand).filter(Boolean))).map(b => (
+        {activeBrands.map(b => (
           <option key={b} value={b} />
         ))}
       </datalist>
       <datalist id="models-list">
-        {Array.from(new Set(products.map(p => p.model).filter(Boolean))).map(m => (
+        {activeModels.map(m => (
           <option key={m} value={m} />
         ))}
       </datalist>

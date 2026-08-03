@@ -136,10 +136,13 @@ function StoreContent() {
     );
   }
 
-  // Dynamic Brands mapping based on imported products
+  // Dynamic Brands mapping based on imported products and registered brand settings
   const getDynamicBrandsList = () => {
     const uniqueBrandNames = Array.from(
-      new Set(products.map((p) => p.brand).filter(Boolean))
+      new Set([
+        ...products.map((p) => p.brand),
+        ...Object.keys(brandSettings)
+      ].filter(Boolean))
     );
 
     if (uniqueBrandNames.length === 0) {
