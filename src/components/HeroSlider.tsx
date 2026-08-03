@@ -4,11 +4,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const slides = [
-  { id: 1, image: "/assets/images/HERO (1).jpg", alt: "الجارحي لقطع غيار السيارات - العروض والقطع 1" },
-  { id: 2, image: "/assets/images/HERO (2).jpg", alt: "الجارحي لقطع غيار السيارات - العروض والقطع 2" },
-  { id: 3, image: "/assets/images/HERO (3).jpg", alt: "الجارحي لقطع غيار السيارات - العروض والقطع 3" },
-  { id: 4, image: "/assets/images/HERO (4).jpg", alt: "الجارحي لقطع غيار السيارات - العروض والقطع 4" },
-  { id: 5, image: "/assets/images/HERO (5).jpg", alt: "الجارحي لقطع غيار السيارات - العروض والقطع 5" },
+  { id: 1, image: "/assets/images/1.webp", alt: "الجارحي لقطع غيار السيارات - البانر 1" },
+  { id: 2, image: "/assets/images/2.webp", alt: "الجارحي لقطع غيار السيارات - البانر 2" },
+  { id: 3, image: "/assets/images/3.webp", alt: "الجارحي لقطع غيار السيارات - البانر 3" },
+  { id: 4, image: "/assets/images/4.webp", alt: "الجارحي لقطع غيار السيارات - البانر 4" },
 ];
 
 const AUTOPLAY_MS = 3800;
