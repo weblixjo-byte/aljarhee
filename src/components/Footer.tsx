@@ -42,7 +42,7 @@ export default function Footer() {
             </p>
             <div className="flex items-center gap-2 border border-slate-900 bg-slate-900/30 p-3 rounded-lg text-[0.7rem] text-slate-400">
               <ShieldAlert className="text-brand-yellow shrink-0" size={16} />
-              <span>جميع القطع المتوفرة لدينا أصلية ومكفولة كفالة تشغيل حقيقية.</span>
+              <span>جميع القطع المتوفرة لدينا جديدة ومكفولة كفالة تشغيل حقيقية.</span>
             </div>
           </div>
 
