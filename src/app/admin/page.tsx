@@ -2897,29 +2897,74 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* Original Price */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">السعر الأصلي (د.أ - للخصم)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editingProduct.originalPrice || ""}
-                  onChange={(e) => setEditingProduct({ 
-                    ...editingProduct, 
-                    originalPrice: e.target.value ? parseFloat(e.target.value) : undefined 
-                  })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
-                  placeholder="اتركه فارغاً لإلغاء الخصم"
-                />
-              </div>
+              {/* Discount & Schedule Box */}
+              <div className="flex flex-col gap-3 md:col-span-2 bg-amber-50/70 border border-amber-200/80 p-4 rounded-2xl">
+                <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
+                  <span className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                    🔥 إعدادات الخصم والمدة المجدولة (لكافة المنتجات)
+                  </span>
+                  {editingProduct.originalPrice && Number(editingProduct.originalPrice) > Number(editingProduct.price) && (
+                    <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-md font-en">
+                      خصم {Math.round(((Number(editingProduct.originalPrice) - Number(editingProduct.price)) / Number(editingProduct.originalPrice)) * 100)}%
+                    </span>
+                  )}
+                </div>
 
-              {/* Scheduled Discount Duration */}
-              {editingProduct.originalPrice && Number(editingProduct.originalPrice) > Number(editingProduct.price) && (
-                <div className="flex flex-col gap-1.5 md:col-span-2 bg-amber-50/60 border border-amber-200/80 p-3.5 rounded-2xl">
-                  <label className="text-xs font-black text-amber-900 flex items-center justify-between">
-                    <span>⏳ مدة الخصم المجدول (بالأيام)</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Original Price */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-black text-amber-900">السعر الأصلي قبل الخصم (د.أ)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editingProduct.originalPrice || ""}
+                      onChange={(e) => {
+                        const orig = e.target.value ? parseFloat(e.target.value) : undefined;
+                        setEditingProduct({
+                          ...editingProduct,
+                          originalPrice: orig
+                        });
+                      }}
+                      className="w-full bg-white border border-amber-250 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
+                      placeholder="السعر السابق (اتركه فارغاً لإلغاء الخصم)"
+                    />
+                  </div>
+
+                  {/* Quick Discount Percent Picker */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-black text-amber-900">أو اختر نسبة الخصم المباشرة (%)</label>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const pct = parseFloat(e.target.value);
+                        if (pct > 0 && editingProduct.price > 0) {
+                          const calculatedOrig = Math.round(editingProduct.price / (1 - pct / 100));
+                          setEditingProduct({
+                            ...editingProduct,
+                            originalPrice: calculatedOrig
+                          });
+                        }
+                      }}
+                      className="w-full bg-white border border-amber-250 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                    >
+                      <option value="">اختر نسبة لعمل خصم فوري...</option>
+                      <option value={10}>خصم 10%</option>
+                      <option value={15}>خصم 15%</option>
+                      <option value={20}>خصم 20%</option>
+                      <option value={25}>خصم 25%</option>
+                      <option value={30}>خصم 30%</option>
+                      <option value={40}>خصم 40%</option>
+                      <option value={50}>خصم 50% (نصف السعر)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Scheduled Days */}
+                <div className="flex flex-col gap-1.5 mt-1 pt-2 border-t border-amber-200/50">
+                  <label className="text-[11px] font-black text-amber-900 flex items-center justify-between">
+                    <span>⏳ مدة الخصم المجدول (بالأيام):</span>
                     {editingProduct.discountEndsAt && (
-                      <span className="text-[10px] font-bold text-amber-700 font-en">
+                      <span className="text-[10px] font-bold text-amber-800 font-en">
                         ينتهي بتاريخ: {new Date(editingProduct.discountEndsAt).toLocaleDateString("ar-JO")}
                       </span>
                     )}
@@ -2942,11 +2987,11 @@ export default function AdminPage() {
                     <option value={20}>20 يوم</option>
                     <option value={30}>شهر كامل (30 يوم)</option>
                   </select>
-                  <p className="text-[10px] font-bold text-slate-500 mt-0.5">
-                    * عند انتهاء عدد الأيام المحدد، يعود سعر المنتج تلقائياً إلى السعر الأصلي ({editingProduct.originalPrice} د.أ) وتختفي شارة الخصم فوراً.
+                  <p className="text-[10px] font-bold text-slate-500">
+                    * عند انتهاء عدد الأيام، يعود سعر المنتج تلقائياً لسعره الأصلي وتختفي شارة الخصم فوراً.
                   </p>
                 </div>
-              )}
+              </div>
 
               {/* Condition */}
               <div className="flex flex-col gap-1.5">
@@ -3107,27 +3152,72 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* Original Price */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">السعر الأصلي (د.أ - للخصم)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newProduct.originalPrice || ""}
-                  onChange={(e) => setNewProduct({ 
-                    ...newProduct, 
-                    originalPrice: e.target.value ? parseFloat(e.target.value) : undefined 
-                  })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-[#ffc72c] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
-                  placeholder="اتركه فارغاً في حال عدم وجود خصم"
-                />
-              </div>
+              {/* Discount & Schedule Box */}
+              <div className="flex flex-col gap-3 md:col-span-2 bg-amber-50/70 border border-amber-200/80 p-4 rounded-2xl">
+                <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
+                  <span className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                    🔥 إعدادات الخصم والمدة المجدولة (اختياري)
+                  </span>
+                  {newProduct.originalPrice && Number(newProduct.originalPrice) > Number(newProduct.price) && (
+                    <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-md font-en">
+                      خصم {Math.round(((Number(newProduct.originalPrice) - Number(newProduct.price)) / Number(newProduct.originalPrice)) * 100)}%
+                    </span>
+                  )}
+                </div>
 
-              {/* Scheduled Discount Duration */}
-              {newProduct.originalPrice && Number(newProduct.originalPrice) > Number(newProduct.price) && (
-                <div className="flex flex-col gap-1.5 md:col-span-2 bg-amber-50/60 border border-amber-200/80 p-3.5 rounded-2xl">
-                  <label className="text-xs font-black text-amber-900 flex items-center justify-between">
-                    <span>⏳ مدة الخصم المجدول (بالأيام)</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Original Price */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-black text-amber-900">السعر الأصلي قبل الخصم (د.أ)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={newProduct.originalPrice || ""}
+                      onChange={(e) => {
+                        const orig = e.target.value ? parseFloat(e.target.value) : undefined;
+                        setNewProduct({
+                          ...newProduct,
+                          originalPrice: orig
+                        });
+                      }}
+                      className="w-full bg-white border border-amber-250 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
+                      placeholder="السعر السابق (اتركه فارغاً إذا لا يوجد خصم)"
+                    />
+                  </div>
+
+                  {/* Quick Discount Percent Picker */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-black text-amber-900">أو اختر نسبة الخصم المباشرة (%)</label>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const pct = parseFloat(e.target.value);
+                        if (pct > 0 && newProduct.price > 0) {
+                          const calculatedOrig = Math.round(newProduct.price / (1 - pct / 100));
+                          setNewProduct({
+                            ...newProduct,
+                            originalPrice: calculatedOrig
+                          });
+                        }
+                      }}
+                      className="w-full bg-white border border-amber-250 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                    >
+                      <option value="">اختر نسبة لعمل خصم فوري...</option>
+                      <option value={10}>خصم 10%</option>
+                      <option value={15}>خصم 15%</option>
+                      <option value={20}>خصم 20%</option>
+                      <option value={25}>خصم 25%</option>
+                      <option value={30}>خصم 30%</option>
+                      <option value={40}>خصم 40%</option>
+                      <option value={50}>خصم 50% (نصف السعر)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Scheduled Days */}
+                <div className="flex flex-col gap-1.5 mt-1 pt-2 border-t border-amber-200/50">
+                  <label className="text-[11px] font-black text-amber-900 flex items-center justify-between">
+                    <span>⏳ مدة الخصم المجدول (بالأيام):</span>
                   </label>
                   <select
                     value={newProduct.discountDays || 0}
@@ -3147,11 +3237,11 @@ export default function AdminPage() {
                     <option value={20}>20 يوم</option>
                     <option value={30}>شهر كامل (30 يوم)</option>
                   </select>
-                  <p className="text-[10px] font-bold text-slate-500 mt-0.5">
-                    * عند انتهاء عدد الأيام المحدد، يعود سعر المنتج تلقائياً إلى السعر الأصلي ({newProduct.originalPrice} د.أ) وتختفي شارة الخصم فوراً.
+                  <p className="text-[10px] font-bold text-slate-500">
+                    * عند انتهاء عدد الأيام، يعود سعر المنتج تلقائياً لسعره الأصلي وتختفي شارة الخصم فوراً.
                   </p>
                 </div>
-              )}
+              </div>
 
               {/* Condition */}
               <div className="flex flex-col gap-1.5">
