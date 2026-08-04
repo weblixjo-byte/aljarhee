@@ -554,6 +554,97 @@ export default function AdminPage() {
     }
   };
 
+  // 1. Delete Brand Handler
+  const handleDeleteBrand = (brandName: string) => {
+    const brandLower = brandName.toLowerCase();
+    const matchingProducts = products.filter(p => p.brand?.toLowerCase() === brandLower);
+    
+    let confirmMsg = `هل أنت متأكد من حذف الماركة "${brandName}" بالكامل من إعدادات الموقع؟`;
+    if (matchingProducts.length > 0) {
+      confirmMsg += `\n\nتنويه: يوجد حالياً ${matchingProducts.length} قطعة/منتج مسجلة تحت هذه الماركة.`;
+    }
+
+    if (!confirm(confirmMsg)) return;
+
+    let deleteProductsToo = false;
+    if (matchingProducts.length > 0) {
+      deleteProductsToo = confirm(`هل تريد أيضاً حذف جميع المنتجات والقطع الـ (${matchingProducts.length}) التابعة لـ "${brandName}" نهائياً من المتجر وقاعدة البيانات؟\n- اضغط موافق للحذف الكامل مع القطع\n- اضغط إلغاء لحذف الماركة فقط مع الإبقاء على القطع`);
+    }
+
+    // Delete brand from brandSettings
+    const updatedBrandSettings = { ...brandSettings };
+    delete updatedBrandSettings[brandLower];
+    delete updatedBrandSettings[brandName];
+    
+    saveCategorySettings({ brands: updatedBrandSettings });
+
+    // Optionally delete matching products
+    if (deleteProductsToo && matchingProducts.length > 0) {
+      const remainingProducts = products.filter(p => p.brand?.toLowerCase() !== brandLower);
+      importProducts(remainingProducts);
+      fetch("/api/admin/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(remainingProducts),
+      }).catch(err => console.error("Failed to sync remaining products after brand deletion:", err));
+      showToast(`تم حذف الماركة "${brandName}" وجميع المنتجات الـ (${matchingProducts.length}) التابعة لها بنجاح.`, "success");
+    } else {
+      showToast(`تم حذف الماركة "${brandName}" بنجاح.`, "success");
+    }
+  };
+
+  // 2. Delete Model Handler
+  const handleDeleteModel = (comboKey: string, modelName: string, yearName: string) => {
+    const modelLower = modelName.toLowerCase();
+    const yearLower = yearName.toLowerCase();
+    const matchingProducts = products.filter(p => p.model?.toLowerCase() === modelLower && p.year?.toLowerCase() === yearLower);
+    
+    const label = `${modelName} (${yearName})`;
+    let confirmMsg = `هل أنت متأكد من حذف الموديل "${label}" بالكامل من إعدادات الموقع؟`;
+    if (matchingProducts.length > 0) {
+      confirmMsg += `\n\nتنويه: يوجد حالياً ${matchingProducts.length} قطعة/منتج مسجلة تحت هذا الموديل.`;
+    }
+
+    if (!confirm(confirmMsg)) return;
+
+    let deleteProductsToo = false;
+    if (matchingProducts.length > 0) {
+      deleteProductsToo = confirm(`هل تريد أيضاً حذف كافة القطع والمنتجات الـ (${matchingProducts.length}) التابعة لموديل "${label}" نهائياً؟\n- اضغط موافق للحذف الكامل مع القطع\n- اضغط إلغاء لحذف الموديل فقط مع الإبقاء على القطع`);
+    }
+
+    // Delete model from modelSettings
+    const updatedModelSettings = { ...modelSettings };
+    delete updatedModelSettings[comboKey];
+    delete updatedModelSettings[`${modelLower}_${yearLower}`];
+    
+    saveCategorySettings({ models: updatedModelSettings });
+
+    // Optionally delete matching products
+    if (deleteProductsToo && matchingProducts.length > 0) {
+      const remainingProducts = products.filter(p => !(p.model?.toLowerCase() === modelLower && p.year?.toLowerCase() === yearLower));
+      importProducts(remainingProducts);
+      fetch("/api/admin/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(remainingProducts),
+      }).catch(err => console.error("Failed to sync remaining products after model deletion:", err));
+      showToast(`تم حذف الموديل "${label}" وجميع المنتجات الـ (${matchingProducts.length}) التابعة له بنجاح.`, "success");
+    } else {
+      showToast(`تم حذف الموديل "${label}" بنجاح.`, "success");
+    }
+  };
+
+  // 3. Delete Category Handler
+  const handleDeleteCategory = (catName: string) => {
+    if (!confirm(`هل أنت متأكد من حذف القسم "${catName}" من إعدادات الموقع؟`)) return;
+
+    const updatedCatSettings = { ...categorySettings };
+    delete updatedCatSettings[catName];
+    
+    saveCategorySettings({ categories: updatedCatSettings });
+    showToast(`تم حذف القسم "${catName}" بنجاح.`, "success");
+  };
+
   // Add new jobvacancy
   const handleAddJob = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2072,9 +2163,20 @@ export default function AdminPage() {
                         const currentVal = tempCategoryImages[catName] !== undefined ? tempCategoryImages[catName] : (categorySettings[catName] || "");
                         return (
                           <div key={catName} className="flex flex-col gap-1.5 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 text-right">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-black text-slate-800">{catName}</span>
-                              {currentVal && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف</span>}
+                            <div className="flex items-center justify-between border-b border-slate-100/80 pb-2 mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-slate-800">{catName}</span>
+                                {currentVal && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف</span>}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCategory(catName)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-lg text-[11px] font-black transition-colors flex items-center gap-1 border border-red-200/50 cursor-pointer"
+                                title="حذف هذا القسم بالكامل"
+                              >
+                                <Trash2 size={13} />
+                                <span>حذف القسم</span>
+                              </button>
                             </div>
                             <div className="flex gap-2 mt-1">
                               <input
@@ -2140,9 +2242,21 @@ export default function AdminPage() {
                         const currentVal = tempBrandLogos[key] !== undefined ? tempBrandLogos[key] : (brandSettings[key] || "");
                         return (
                           <div key={brandName} className="flex flex-col gap-1.5 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 text-right">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-black text-slate-800 font-en uppercase">{brandName}</span>
-                              {currentVal && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف</span>}
+                            <div className="flex items-center justify-between border-b border-slate-100/80 pb-2 mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-slate-800 font-en uppercase">{brandName}</span>
+                                <span className="text-[10px] font-bold text-slate-400 font-sans">({products.filter(p => p.brand?.toLowerCase() === brandName.toLowerCase()).length} قطعة)</span>
+                                {currentVal && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف</span>}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteBrand(brandName)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-lg text-[11px] font-black transition-colors flex items-center gap-1 border border-red-200/50 cursor-pointer"
+                                title="حذف هذه الماركة بالكامل"
+                              >
+                                <Trash2 size={13} />
+                                <span>حذف الماركة</span>
+                              </button>
                             </div>
                             <div className="flex gap-2 mt-1">
                               <input
@@ -2239,9 +2353,21 @@ export default function AdminPage() {
                         const currentVal = tempModelImages[comboKey] !== undefined ? tempModelImages[comboKey] : (modelSettings[comboKey] || "");
                         return (
                           <div key={comboKey} className="flex flex-col gap-1.5 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 text-right">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-black text-slate-800">{label}</span>
-                              {currentVal && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف</span>}
+                            <div className="flex items-center justify-between border-b border-slate-100/80 pb-2 mb-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-slate-800">{label}</span>
+                                <span className="text-[10px] font-bold text-slate-400 font-sans">({products.filter(p => p.model?.toLowerCase() === combo.model.toLowerCase() && p.year?.toLowerCase() === combo.year.toLowerCase()).length} قطعة)</span>
+                                {currentVal && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">معرّف</span>}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteModel(comboKey, combo.model, combo.year)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-lg text-[11px] font-black transition-colors flex items-center gap-1 border border-red-200/50 cursor-pointer"
+                                title="حذف هذا الموديل بالكامل"
+                              >
+                                <Trash2 size={13} />
+                                <span>حذف الموديل</span>
+                              </button>
                             </div>
                             <div className="flex gap-2 mt-1">
                               <input
