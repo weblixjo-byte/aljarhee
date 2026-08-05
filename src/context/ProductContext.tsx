@@ -107,7 +107,9 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     // 2. Fetch fresh live data from database silently in the background
     async function syncDatabaseInBackground() {
       try {
-        const res = await fetch("/api/products");
+        const isAdmin = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+        const url = isAdmin ? `/api/products?t=${Date.now()}` : "/api/products";
+        const res = await fetch(url);
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
