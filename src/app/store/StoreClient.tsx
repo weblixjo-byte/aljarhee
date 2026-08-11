@@ -105,17 +105,17 @@ function StoreContent() {
   useEffect(() => {
     const syncWithUrl = () => {
       const params = new URLSearchParams(window.location.search);
-      const brandParam = params.get("brand");
-      const modelParam = params.get("model");
-      const yearParam = params.get("year");
-      const categoryParam = params.get("category");
-      const queryParam = params.get("query");
+      const brandParam = params.get("brand") || null;
+      const modelParam = params.get("model") || null;
+      const yearParam = params.get("year") || null;
+      const categoryParam = params.get("category") || null;
+      const queryParam = params.get("query") || "";
 
       setSelectedBrand(brandParam);
       setSelectedModel(modelParam);
       setSelectedYear(yearParam);
       setSelectedCategory(categoryParam);
-      setSearchQuery(queryParam || "");
+      setSearchQuery(queryParam);
       setCurrentPage(1);
     };
 
@@ -123,6 +123,21 @@ function StoreContent() {
 
     window.addEventListener("popstate", syncWithUrl);
     return () => window.removeEventListener("popstate", syncWithUrl);
+  }, []);
+
+  useEffect(() => {
+    const brandParam = searchParams.get("brand");
+    const modelParam = searchParams.get("model");
+    const yearParam = searchParams.get("year");
+    const categoryParam = searchParams.get("category");
+    const queryParam = searchParams.get("query");
+
+    setSelectedBrand(brandParam);
+    setSelectedModel(modelParam);
+    setSelectedYear(yearParam);
+    setSelectedCategory(categoryParam);
+    setSearchQuery(queryParam || "");
+    setCurrentPage(1);
   }, [searchParams]);
 
   if (loading) {
@@ -232,7 +247,7 @@ function StoreContent() {
     setSelectedYear(null);
     setSelectedCategory(null);
     setCurrentPage(1);
-    router.push(`/store?brand=${brandKey}`);
+    router.push(`/store?brand=${encodeURIComponent(brandKey)}`);
   };
 
   const handleModelYearSelect = (model: string, year: string) => {
@@ -240,14 +255,14 @@ function StoreContent() {
     setSelectedYear(year);
     setSelectedCategory(null);
     setCurrentPage(1);
-    router.push(`/store?brand=${selectedBrand}&model=${encodeURIComponent(model)}&year=${encodeURIComponent(year)}`);
+    router.push(`/store?brand=${encodeURIComponent(selectedBrand || "")}&model=${encodeURIComponent(model)}&year=${encodeURIComponent(year)}`);
   };
 
   const handleCategorySelect = (catKey: string) => {
     setSelectedCategory(catKey);
     setCurrentPage(1);
     router.push(
-      `/store?brand=${selectedBrand}&model=${encodeURIComponent(
+      `/store?brand=${encodeURIComponent(selectedBrand || "")}&model=${encodeURIComponent(
         selectedModel || ""
       )}&year=${encodeURIComponent(selectedYear || "")}&category=${encodeURIComponent(catKey)}`
     );
@@ -260,7 +275,7 @@ function StoreContent() {
       setSelectedCategory(null);
       setCurrentPage(1);
       router.push(
-        `/store?brand=${selectedBrand}&model=${encodeURIComponent(
+        `/store?brand=${encodeURIComponent(selectedBrand || "")}&model=${encodeURIComponent(
           selectedModel || ""
         )}&year=${encodeURIComponent(selectedYear || "")}`
       );
@@ -270,7 +285,7 @@ function StoreContent() {
       setSelectedYear(null);
       setSelectedCategory(null);
       setCurrentPage(1);
-      router.push(`/store?brand=${selectedBrand}`);
+      router.push(`/store?brand=${encodeURIComponent(selectedBrand || "")}`);
     } else if (selectedBrand) {
       // Step 1 -> Step 0: Return to Brand choice
       resetAll();
