@@ -108,6 +108,15 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     async function syncDatabaseInBackground() {
       try {
         const isAdmin = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+        
+        // Skip background sync if client already synced in this session within 10 minutes (saves Netlify functions)
+        if (!isAdmin && typeof window !== "undefined") {
+          const lastSync = sessionStorage.getItem("aljarhee_last_sync_ts");
+          if (lastSync && Date.now() - Number(lastSync) < 10 * 60 * 1000 && initialProducts.length > 0) {
+            return;
+          }
+        }
+
         const url = isAdmin ? `/api/products?t=${Date.now()}` : "/api/products";
         const res = await fetch(url);
         if (res.ok) {
@@ -118,6 +127,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
             
             setProducts(normalizeDiscountExpiry(realProducts));
             localStorage.setItem("aljarhee_imported_products", JSON.stringify(data));
+            sessionStorage.setItem("aljarhee_last_sync_ts", Date.now().toString());
 
             if (settingsProduct && settingsProduct.description) {
               try {
