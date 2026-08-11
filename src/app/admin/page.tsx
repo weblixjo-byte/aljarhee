@@ -290,6 +290,18 @@ export default function AdminPage() {
   const [managePage, setManagePage] = useState(1);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
 
+  // Custom field toggles for Manual Add Modal
+  const [customAddCategory, setCustomAddCategory] = useState(false);
+  const [customAddBrand, setCustomAddBrand] = useState(false);
+  const [customAddModel, setCustomAddModel] = useState(false);
+  const [customAddYear, setCustomAddYear] = useState(false);
+
+  // Custom field toggles for Edit Product Modal
+  const [customEditCategory, setCustomEditCategory] = useState(false);
+  const [customEditBrand, setCustomEditBrand] = useState(false);
+  const [customEditModel, setCustomEditModel] = useState(false);
+  const [customEditYear, setCustomEditYear] = useState(false);
+
   // Manual Product Creation State
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [newProduct, setNewProduct] = useState({
@@ -1499,6 +1511,97 @@ export default function AdminPage() {
     all: "كل الماركات"
   };
 
+  // Master lists for modal dropdown selects
+  const modalCategories = Array.from(new Set([
+    ...products.map(p => p.categoryName || p.category),
+    ...Object.keys(categorySettings),
+    "قطع بودي",
+    "قطع كهرباء",
+    "قطع ميكانيك"
+  ].filter(Boolean))).sort();
+
+  const modalBrands = Array.from(new Set([
+    ...products.map(p => p.brand),
+    ...Object.keys(brandSettings),
+    "toyota",
+    "hyundai",
+    "kia",
+    "ford",
+    "honda",
+    "nissan",
+    "chevrolet",
+    "lexus",
+    "byd",
+    "volkswagen",
+    "mitsubishi",
+    "mercedes",
+    "bmw"
+  ].filter(Boolean))).sort();
+
+  const getModalModels = (selectedBrand?: string) => {
+    return Array.from(new Set([
+      ...products
+        .filter(p => !selectedBrand || selectedBrand === "all" || p.brand?.toLowerCase() === selectedBrand.toLowerCase())
+        .map(p => p.model),
+      ...Object.keys(modelSettings).map(k => k.split('_')[0])
+    ].filter(Boolean))).sort();
+  };
+
+  const modalYears = Array.from(new Set([
+    ...products.map(p => p.year).filter(Boolean),
+    "2024-2026",
+    "2020-2023",
+    "2019-2023",
+    "2016-2018",
+    "2015-2017",
+    "2012-2015",
+    "2012-2014",
+    "2010-2011",
+    "2004-2009",
+    "2000-2003"
+  ])).sort().reverse();
+
+  const openEditProductModal = (prod: any) => {
+    const isCatInList = modalCategories.includes(prod.categoryName || prod.category);
+    const isBrandInList = modalBrands.some(b => b.toLowerCase() === (prod.brand || "").toLowerCase());
+    const isModelInList = getModalModels(prod.brand).includes(prod.model);
+    const isYearInList = modalYears.includes(prod.year);
+
+    setCustomEditCategory(!isCatInList && !!(prod.categoryName || prod.category));
+    setCustomEditBrand(!isBrandInList && !!prod.brand);
+    setCustomEditModel(!isModelInList && !!prod.model);
+    setCustomEditYear(!isYearInList && !!prod.year);
+
+    setEditingProduct({ ...prod });
+  };
+
+  const openAddProductModal = () => {
+    setCustomAddCategory(false);
+    setCustomAddBrand(false);
+    setCustomAddModel(false);
+    setCustomAddYear(false);
+    const defaultCat = modalCategories[0] || "قطع بودي";
+    const defaultBrand = modalBrands[0] || "toyota";
+    const defaultModel = getModalModels(defaultBrand)[0] || "بريوس";
+    const defaultYear = modalYears[0] || "2020-2023";
+    setNewProduct({
+      name: "",
+      category: defaultCat,
+      categoryName: defaultCat,
+      brand: defaultBrand,
+      model: defaultModel,
+      year: defaultYear,
+      price: 0,
+      originalPrice: undefined,
+      discountDays: 0,
+      discountEndsAt: undefined,
+      condition: "new",
+      image: "",
+      description: "",
+    });
+    setIsAddingProduct(true);
+  };
+
   const ITEMS_PER_PAGE = 15;
   const filteredManageProducts = products
     .filter(p => {
@@ -2491,7 +2594,23 @@ export default function AdminPage() {
                         hour12: true
                       });
 
-                      const waMsg = encodeURIComponent(`مرحباً سيد ${o.customerName}، تواصل معك من مركز الجارحي بخصوص طلبك رقم ${o.id}.`);
+                      const itemsText = o.cartItems.map((it: any) => {
+                        const cp = products.find(p => p.id === it.id || p.name === it.name);
+                        const brand = it.brand || cp?.brand || "";
+                        const model = it.model || cp?.model || "";
+                        const year = it.year || cp?.year || "";
+                        const brandDisplay = brand ? (brandMap[brand.toLowerCase()] || brand.toUpperCase()) : "";
+                        const carInfo = [brandDisplay, model, year ? `موديل ${year}` : ""].filter(Boolean).join(" - ");
+                        return `• ${it.name} ${carInfo ? `(${carInfo})` : ""} - الكمية: ${it.quantity} - السعر: ${it.price > 0 ? `${it.price} د.أ` : "طلب سعر"}`;
+                      }).join("\n");
+
+                      const waMsg = encodeURIComponent(
+                        `مرحباً سيد ${o.customerName}، تواصل معك من مركز الجارحي بخصوص طلبك رقم #${o.id}:\n\n` +
+                        `📦 تفاصيل القطع المطلوبة:\n${itemsText}\n\n` +
+                        `💰 الإجمالي: ${o.total} د.أ\n` +
+                        `📍 العنوان: ${o.customerCity === "Amman" ? "عمان" : o.customerCity === "Zarqa" ? "الزرقاء" : o.customerCity === "Irbid" ? "إربد" : o.customerCity === "Salt" ? "السلط" : o.customerCity || "الأردن"} - ${o.customerAddress}\n\n` +
+                        `يرجى تأكيد موعد وموقع الاستلام لتجهيز الطلب وشحنه لك فوراً.`
+                      );
                       const waUrl = `https://wa.me/${o.customerPhone.replace(/[^0-9]/g, "")}?text=${waMsg}`;
 
                       return (
@@ -2502,7 +2621,7 @@ export default function AdminPage() {
                           {/* Order Header */}
                           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3">
                             <div className="flex items-center gap-2.5">
-                              <span className="font-en font-black text-slate-900 text-sm">{o.id}</span>
+                              <span className="font-en font-black text-slate-900 text-sm">#{o.id}</span>
                               <span className={`text-[10px] font-black px-2.5 py-1 rounded-full ${
                                 o.status === "completed" 
                                   ? "bg-green-50 text-green-700 border border-green-200/60" 
@@ -2539,7 +2658,7 @@ export default function AdminPage() {
                               <div className="flex justify-between border-b border-slate-200/40 pb-1.5">
                                 <span className="text-slate-400">المدينة:</span>
                                 <span className="text-slate-800 font-black">
-                                  {o.customerCity === "Amman" ? "عمان" : o.customerCity === "Zarqa" ? "الزرقاء" : o.customerCity === "Irbid" ? "إربد" : o.customerCity === "Salt" ? "السلط" : "باقي المحافظات"}
+                                  {o.customerCity === "Amman" ? "عمان" : o.customerCity === "Zarqa" ? "الزرقاء" : o.customerCity === "Irbid" ? "إربد" : o.customerCity === "Salt" ? "السلط" : (o.customerCity || "باقي المحافظات")}
                                 </span>
                               </div>
                               <div className="flex flex-col gap-1">
@@ -2550,38 +2669,70 @@ export default function AdminPage() {
 
                             {/* Ordered items */}
                             <div className="lg:col-span-7 flex flex-col gap-3">
-                              <span className="text-[10px] font-black text-slate-400 block">القطع المطلوبة:</span>
-                              <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto pr-1">
-                                {o.cartItems.map((item: any, idx: number) => (
-                                  <div 
-                                    key={idx}
-                                    className="flex items-center justify-between gap-3 bg-white border border-slate-100 p-2.5 rounded-xl text-xs"
-                                  >
-                                    <div className="flex items-center gap-2.5">
-                                      <img 
-                                        src={item.image} 
-                                        alt={item.name} 
-                                        className="w-10 h-10 rounded-lg object-cover bg-slate-50 shrink-0 border border-slate-100"
-                                        onError={(e) => {
-                                          e.currentTarget.src = "/assets/images/placeholder-product.png";
-                                        }}
-                                      />
-                                      <div className="flex flex-col text-right">
-                                        <span className="font-black text-slate-800 text-xs leading-tight">{item.name}</span>
-                                        {item.brand && (
-                                          <span className="text-[9px] font-black text-slate-400 uppercase mt-0.5 font-en">
-                                            {item.brand} {item.model}
-                                          </span>
-                                        )}
+                              <span className="text-[10px] font-black text-slate-400 block">
+                                القطع المطلوبة في هذا الطلب ({o.cartItems.length} صنف):
+                              </span>
+                              <div className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-1">
+                                {o.cartItems.map((item: any, idx: number) => {
+                                  const cp = products.find(p => p.id === item.id || p.name === item.name);
+                                  const brand = item.brand || cp?.brand || "";
+                                  const model = item.model || cp?.model || "";
+                                  const year = item.year || cp?.year || "";
+                                  const category = item.categoryName || item.category || cp?.categoryName || cp?.category || "";
+                                  const image = item.image || cp?.image || "/assets/images/placeholder-product.png";
+                                  const itemPrice = typeof item.price === "number" ? item.price : parseFloat(item.price) || 0;
+                                  const qty = item.quantity || 1;
+                                  const itemSubtotal = itemPrice * qty;
+
+                                  return (
+                                    <div 
+                                      key={idx}
+                                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white border border-slate-200/90 p-3 rounded-xl text-xs shadow-2xs hover:border-slate-300 transition-all"
+                                    >
+                                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                                        <div className="relative w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden shrink-0">
+                                          <img 
+                                            src={image} 
+                                            alt={item.name} 
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                              e.currentTarget.src = "/assets/images/placeholder-product.png";
+                                            }}
+                                          />
+                                        </div>
+                                        <div className="flex flex-col text-right gap-1 min-w-0">
+                                          <span className="font-black text-slate-900 text-xs leading-snug">{item.name}</span>
+                                          <div className="flex flex-wrap items-center gap-1.5 text-[9px]">
+                                            {category && (
+                                              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/60 font-black px-1.5 py-0.5 rounded-md">
+                                                📁 {category}
+                                              </span>
+                                            )}
+                                            {(brand || model) && (
+                                              <span className="bg-blue-50 text-blue-700 border border-blue-200/60 font-black px-1.5 py-0.5 rounded-md font-sans">
+                                                🚗 {brand ? (brandMap[brand.toLowerCase()] || brand.toUpperCase()) : ""} {model}
+                                              </span>
+                                            )}
+                                            {year && (
+                                              <span className="bg-amber-50 text-amber-800 border border-amber-200/60 font-black px-1.5 py-0.5 rounded-md font-sans">
+                                                📅 {year}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0 font-sans">
+                                        <div className="text-right sm:text-left flex items-center gap-1.5">
+                                          <span className="font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md text-[11px] font-en">{qty}x</span>
+                                          <span className="font-black text-brand-green text-xs font-en">{itemPrice > 0 ? `${itemPrice} د.أ` : "طلب سعر"}</span>
+                                          {qty > 1 && itemPrice > 0 && (
+                                            <span className="text-[10px] font-black text-slate-400 font-en">(= {itemSubtotal} د.أ)</span>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
-                                    <div className="text-left font-en shrink-0">
-                                      <span className="font-black text-slate-700">{item.quantity}</span>
-                                      <span className="text-slate-400 mx-1">×</span>
-                                      <span className="font-black text-brand-green">{item.price > 0 ? `${item.price} د.أ` : "طلب سعر"}</span>
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           </div>
@@ -2659,7 +2810,7 @@ export default function AdminPage() {
                 {/* Manual Product Creation Button */}
                 <button
                   type="button"
-                  onClick={() => setIsAddingProduct(true)}
+                  onClick={openAddProductModal}
                   className="bg-[#ffc72c] hover:bg-[#e0a61b] text-slate-900 font-black text-xs px-5 py-3 rounded-xl transition-all cursor-pointer border-0 flex items-center gap-1.5 shadow-sm font-sans"
                 >
                   <Plus size={14} />
@@ -2866,7 +3017,7 @@ export default function AdminPage() {
                           <td className="py-3.5 pr-6 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <button
-                                onClick={() => setEditingProduct({ ...prod })}
+                                onClick={() => openEditProductModal(prod)}
                                 className="p-1.5 rounded-lg border border-slate-200 hover:border-amber-400 text-slate-400 hover:text-amber-600 hover:bg-amber-50/20 transition-all bg-white cursor-pointer"
                                 title="تعديل المنتج"
                               >
@@ -2957,58 +3108,201 @@ export default function AdminPage() {
 
               {/* Category */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">التصنيف</label>
-                <input
-                  type="text"
-                  list="categories-list"
-                  value={editingProduct.categoryName || editingProduct.category}
-                  onChange={(e) => setEditingProduct({ 
-                    ...editingProduct, 
-                    categoryName: e.target.value,
-                    category: e.target.value
-                  })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
-                  placeholder="اختر أو اكتب تصنيفاً..."
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-700">التصنيف</label>
+                  {customEditCategory && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomEditCategory(false);
+                        const fallbackCat = modalCategories[0] || "قطع بودي";
+                        setEditingProduct({ ...editingProduct, categoryName: fallbackCat, category: fallbackCat });
+                      }}
+                      className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline font-bold bg-transparent border-0 cursor-pointer"
+                    >
+                      ← العودة للقائمة
+                    </button>
+                  )}
+                </div>
+                {!customEditCategory ? (
+                  <select
+                    value={editingProduct.categoryName || editingProduct.category || ""}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomEditCategory(true);
+                        setEditingProduct({ ...editingProduct, categoryName: "", category: "" });
+                      } else {
+                        setEditingProduct({ ...editingProduct, categoryName: e.target.value, category: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                  >
+                    <option value="">-- اختر التصنيف --</option>
+                    {modalCategories.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    <option value="__custom__" className="text-amber-700 font-bold bg-amber-50">➕ إضافة تصنيف جديد...</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={editingProduct.categoryName || editingProduct.category || ""}
+                    onChange={(e) => setEditingProduct({ 
+                      ...editingProduct, 
+                      categoryName: e.target.value,
+                      category: e.target.value
+                    })}
+                    placeholder="اكتب اسم التصنيف الجديد هنا..."
+                    autoFocus
+                    className="w-full bg-white border border-amber-300 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans shadow-xs"
+                  />
+                )}
               </div>
 
               {/* Brand Input */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">ماركة السيارة</label>
-                <input
-                  type="text"
-                  list="brands-list"
-                  value={editingProduct.brand}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, brand: e.target.value })}
-                  placeholder="اختر أو اكتب ماركة..."
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-700">ماركة السيارة</label>
+                  {customEditBrand && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomEditBrand(false);
+                        const fallbackBrand = modalBrands[0] || "toyota";
+                        setEditingProduct({ ...editingProduct, brand: fallbackBrand });
+                      }}
+                      className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline font-bold bg-transparent border-0 cursor-pointer"
+                    >
+                      ← العودة للقائمة
+                    </button>
+                  )}
+                </div>
+                {!customEditBrand ? (
+                  <select
+                    value={editingProduct.brand || ""}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomEditBrand(true);
+                        setEditingProduct({ ...editingProduct, brand: "" });
+                      } else {
+                        setEditingProduct({ ...editingProduct, brand: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                  >
+                    <option value="">-- اختر ماركة السيارة --</option>
+                    {modalBrands.map((b) => (
+                      <option key={b} value={b}>{brandMap[b.toLowerCase()] || b.toUpperCase()}</option>
+                    ))}
+                    <option value="__custom__" className="text-amber-700 font-bold bg-amber-50">➕ إضافة ماركة جديدة...</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={editingProduct.brand || ""}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, brand: e.target.value })}
+                    placeholder="اكتب اسم الماركة الجديدة هنا..."
+                    autoFocus
+                    className="w-full bg-white border border-amber-300 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans shadow-xs"
+                  />
+                )}
               </div>
 
               {/* Model */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">الموديل</label>
-                <input
-                  type="text"
-                  list="models-list"
-                  value={editingProduct.model}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, model: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
-                  placeholder="اختر أو اكتب موديلاً..."
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-700">الموديل</label>
+                  {customEditModel && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomEditModel(false);
+                        const available = getModalModels(editingProduct.brand);
+                        setEditingProduct({ ...editingProduct, model: available[0] || "بريوس" });
+                      }}
+                      className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline font-bold bg-transparent border-0 cursor-pointer"
+                    >
+                      ← العودة للقائمة
+                    </button>
+                  )}
+                </div>
+                {!customEditModel ? (
+                  <select
+                    value={editingProduct.model || ""}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomEditModel(true);
+                        setEditingProduct({ ...editingProduct, model: "" });
+                      } else {
+                        setEditingProduct({ ...editingProduct, model: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                  >
+                    <option value="">-- اختر الموديل --</option>
+                    {getModalModels(editingProduct.brand).map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                    <option value="__custom__" className="text-amber-700 font-bold bg-amber-50">➕ إضافة موديل جديد...</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={editingProduct.model || ""}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, model: e.target.value })}
+                    placeholder="اكتب اسم الموديل الجديد هنا..."
+                    autoFocus
+                    className="w-full bg-white border border-amber-300 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans shadow-xs"
+                  />
+                )}
               </div>
 
               {/* Year */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">سنة الصنع</label>
-                <input
-                  type="text"
-                  list="years-list"
-                  value={editingProduct.year}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, year: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
-                  placeholder="مثال: 2012-2018"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-700">سنة الصنع</label>
+                  {customEditYear && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomEditYear(false);
+                        setEditingProduct({ ...editingProduct, year: modalYears[0] || "2020-2023" });
+                      }}
+                      className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline font-bold bg-transparent border-0 cursor-pointer"
+                    >
+                      ← العودة للقائمة
+                    </button>
+                  )}
+                </div>
+                {!customEditYear ? (
+                  <select
+                    value={editingProduct.year || ""}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomEditYear(true);
+                        setEditingProduct({ ...editingProduct, year: "" });
+                      } else {
+                        setEditingProduct({ ...editingProduct, year: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                  >
+                    <option value="">-- اختر سنة الصنع أو المدى --</option>
+                    {modalYears.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                    <option value="__custom__" className="text-amber-700 font-bold bg-amber-50">➕ إضافة سنة / مدى جديد...</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={editingProduct.year || ""}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, year: e.target.value })}
+                    placeholder="مثال: 2012-2018 أو 2021..."
+                    autoFocus
+                    className="w-full bg-white border border-amber-300 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans shadow-xs"
+                  />
+                )}
               </div>
 
               {/* Sale Price */}
@@ -3197,58 +3491,201 @@ export default function AdminPage() {
 
               {/* Category */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">التصنيف</label>
-                <input
-                  type="text"
-                  list="categories-list"
-                  value={newProduct.categoryName || newProduct.category}
-                  onChange={(e) => setNewProduct({ 
-                    ...newProduct, 
-                    categoryName: e.target.value,
-                    category: e.target.value
-                  })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
-                  placeholder="اختر أو اكتب تصنيفاً جديداً..."
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-700">التصنيف</label>
+                  {customAddCategory && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomAddCategory(false);
+                        const fallbackCat = modalCategories[0] || "قطع بودي";
+                        setNewProduct({ ...newProduct, categoryName: fallbackCat, category: fallbackCat });
+                      }}
+                      className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline font-bold bg-transparent border-0 cursor-pointer"
+                    >
+                      ← العودة للقائمة
+                    </button>
+                  )}
+                </div>
+                {!customAddCategory ? (
+                  <select
+                    value={newProduct.categoryName || newProduct.category || ""}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomAddCategory(true);
+                        setNewProduct({ ...newProduct, categoryName: "", category: "" });
+                      } else {
+                        setNewProduct({ ...newProduct, categoryName: e.target.value, category: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                  >
+                    <option value="">-- اختر التصنيف --</option>
+                    {modalCategories.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    <option value="__custom__" className="text-amber-700 font-bold bg-amber-50">➕ إضافة تصنيف جديد...</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={newProduct.categoryName || newProduct.category || ""}
+                    onChange={(e) => setNewProduct({ 
+                      ...newProduct, 
+                      categoryName: e.target.value,
+                      category: e.target.value
+                    })}
+                    placeholder="اكتب اسم التصنيف الجديد هنا..."
+                    autoFocus
+                    className="w-full bg-white border border-amber-300 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans shadow-xs"
+                  />
+                )}
               </div>
 
               {/* Brand Input */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">ماركة السيارة</label>
-                <input
-                  type="text"
-                  list="brands-list"
-                  value={newProduct.brand}
-                  onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
-                  placeholder="اختر أو اكتب ماركة جديدة..."
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-700">ماركة السيارة</label>
+                  {customAddBrand && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomAddBrand(false);
+                        const fallbackBrand = modalBrands[0] || "toyota";
+                        setNewProduct({ ...newProduct, brand: fallbackBrand });
+                      }}
+                      className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline font-bold bg-transparent border-0 cursor-pointer"
+                    >
+                      ← العودة للقائمة
+                    </button>
+                  )}
+                </div>
+                {!customAddBrand ? (
+                  <select
+                    value={newProduct.brand || ""}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomAddBrand(true);
+                        setNewProduct({ ...newProduct, brand: "" });
+                      } else {
+                        setNewProduct({ ...newProduct, brand: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                  >
+                    <option value="">-- اختر ماركة السيارة --</option>
+                    {modalBrands.map((b) => (
+                      <option key={b} value={b}>{brandMap[b.toLowerCase()] || b.toUpperCase()}</option>
+                    ))}
+                    <option value="__custom__" className="text-amber-700 font-bold bg-amber-50">➕ إضافة ماركة جديدة...</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={newProduct.brand || ""}
+                    onChange={(e) => setNewProduct({ ...newProduct, brand: e.target.value })}
+                    placeholder="اكتب اسم الماركة الجديدة هنا..."
+                    autoFocus
+                    className="w-full bg-white border border-amber-300 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans shadow-xs"
+                  />
+                )}
               </div>
 
               {/* Model */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">الموديل</label>
-                <input
-                  type="text"
-                  list="models-list"
-                  value={newProduct.model}
-                  onChange={(e) => setNewProduct({ ...newProduct, model: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
-                  placeholder="اختر أو اكتب موديلاً جديداً..."
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-700">الموديل</label>
+                  {customAddModel && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomAddModel(false);
+                        const available = getModalModels(newProduct.brand);
+                        setNewProduct({ ...newProduct, model: available[0] || "بريوس" });
+                      }}
+                      className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline font-bold bg-transparent border-0 cursor-pointer"
+                    >
+                      ← العودة للقائمة
+                    </button>
+                  )}
+                </div>
+                {!customAddModel ? (
+                  <select
+                    value={newProduct.model || ""}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomAddModel(true);
+                        setNewProduct({ ...newProduct, model: "" });
+                      } else {
+                        setNewProduct({ ...newProduct, model: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                  >
+                    <option value="">-- اختر الموديل --</option>
+                    {getModalModels(newProduct.brand).map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                    <option value="__custom__" className="text-amber-700 font-bold bg-amber-50">➕ إضافة موديل جديد...</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={newProduct.model || ""}
+                    onChange={(e) => setNewProduct({ ...newProduct, model: e.target.value })}
+                    placeholder="اكتب اسم الموديل الجديد هنا..."
+                    autoFocus
+                    className="w-full bg-white border border-amber-300 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans shadow-xs"
+                  />
+                )}
               </div>
 
               {/* Year */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-black text-slate-700">سنة الصنع</label>
-                <input
-                  type="text"
-                  list="years-list"
-                  value={newProduct.year}
-                  onChange={(e) => setNewProduct({ ...newProduct, year: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-brand-green outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans"
-                  placeholder="اختر أو اكتب سنة جديدة (مثال: 2010)..."
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-700">سنة الصنع</label>
+                  {customAddYear && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomAddYear(false);
+                        setNewProduct({ ...newProduct, year: modalYears[0] || "2020-2023" });
+                      }}
+                      className="text-[10px] text-blue-600 hover:text-blue-700 hover:underline font-bold bg-transparent border-0 cursor-pointer"
+                    >
+                      ← العودة للقائمة
+                    </button>
+                  )}
+                </div>
+                {!customAddYear ? (
+                  <select
+                    value={newProduct.year || ""}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomAddYear(true);
+                        setNewProduct({ ...newProduct, year: "" });
+                      } else {
+                        setNewProduct({ ...newProduct, year: e.target.value });
+                      }
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right cursor-pointer font-sans"
+                  >
+                    <option value="">-- اختر سنة الصنع أو المدى --</option>
+                    {modalYears.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                    <option value="__custom__" className="text-amber-700 font-bold bg-amber-50">➕ إضافة سنة / مدى جديد...</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={newProduct.year || ""}
+                    onChange={(e) => setNewProduct({ ...newProduct, year: e.target.value })}
+                    placeholder="مثال: 2012-2018 أو 2021..."
+                    autoFocus
+                    className="w-full bg-white border border-amber-300 focus:border-[#2d7a1f] outline-none rounded-xl py-2 px-3 text-xs font-bold text-slate-800 text-right font-sans shadow-xs"
+                  />
+                )}
               </div>
 
               {/* Sale Price */}
