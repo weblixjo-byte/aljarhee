@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { productsData, Product } from "../data/products";
 import importedProductsStatic from "../data/imported_products.json";
+import { supabase } from "../lib/supabaseClient";
 
 interface ProductContextType {
   products: Product[];
@@ -117,6 +118,87 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
+        // Try querying Supabase directly from the browser first to save Netlify Serverless Function quota
+        if (supabase) {
+          try {
+            let allData: any[] = [];
+            let from = 0;
+            const pageSize = 1000;
+            let hasMore = true;
+
+            while (hasMore) {
+              const { data, error } = await supabase
+                .from("products")
+                .select("*")
+                .order("id", { ascending: true })
+                .range(from, from + pageSize - 1);
+
+              if (error) {
+                throw error;
+              }
+
+              if (data && data.length > 0) {
+                allData = [...allData, ...data];
+                if (data.length < pageSize) {
+                  hasMore = false;
+                } else {
+                  from += pageSize;
+                }
+              } else {
+                hasMore = false;
+              }
+            }
+
+            if (allData.length > 0) {
+              const realProducts = allData.filter((p: any) => p.id > 0).map((item: any) => ({
+                id: Number(item.id),
+                name: item.name,
+                category: item.category,
+                categoryName: item.categoryName,
+                brand: item.brand,
+                model: item.model,
+                year: item.year,
+                price: Number(item.price),
+                originalPrice: item.originalPrice ? Number(item.originalPrice) : undefined,
+                condition: item.condition,
+                conditionText: item.conditionText,
+                image: item.image,
+                description: item.description,
+                featured: Boolean(item.featured),
+                bestSeller: Boolean(item.bestSeller),
+                newArrival: Boolean(item.newArrival),
+              }));
+
+              const settingsProduct = allData.find((p: any) => p.id === 0);
+              
+              setProducts(normalizeDiscountExpiry(realProducts));
+              localStorage.setItem("aljarhee_imported_products", JSON.stringify(allData));
+              sessionStorage.setItem("aljarhee_last_sync_ts", Date.now().toString());
+
+              if (settingsProduct && settingsProduct.description) {
+                try {
+                  const parsed = JSON.parse(settingsProduct.description);
+                  const cats = parsed.categories || {};
+                  const brs = parsed.brands || {};
+                  const mdls = parsed.models || {};
+                  
+                  setCategorySettings(cats);
+                  setBrandSettings(brs);
+                  setModelSettings(mdls);
+
+                  localStorage.setItem("aljarhee_category_settings", JSON.stringify(cats));
+                  localStorage.setItem("aljarhee_brand_settings", JSON.stringify(brs));
+                  localStorage.setItem("aljarhee_model_settings", JSON.stringify(mdls));
+                } catch (e) {}
+              }
+              return; // Successfully fetched from Supabase, skip API route!
+            }
+          } catch (dbErr) {
+            console.warn("Direct Supabase query failed, falling back to API route:", dbErr);
+          }
+        }
+
+        // Fallback to Serverless Function API route if supabase is unavailable or query fails
         const url = isAdmin ? `/api/products?t=${Date.now()}` : "/api/products";
         const res = await fetch(url);
         if (res.ok) {
