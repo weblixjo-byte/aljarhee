@@ -5,6 +5,7 @@ import Link from "next/link";
 import * as XLSX from "xlsx";
 import { useProducts } from "../../context/ProductContext";
 import { useToast } from "../../context/ToastContext";
+import { fetchAdminOrders, saveAdminOrders, saveCategorySettings as saveCategorySettingsService, saveProductsImport } from "../../lib/adminService";
 import { 
   Upload, 
   FileText, 
@@ -194,21 +195,6 @@ export default function AdminPage() {
       return cleanUrl;
     }
 
-    try {
-      const res = await fetch("/api/admin/upload-external-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: cleanUrl }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.url) {
-          return data.url;
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to upload external image to local storage:", e);
-    }
     return cleanUrl;
   };
 
@@ -342,12 +328,9 @@ export default function AdminPage() {
     try {
       setOrdersLoading(true);
       
-      // 1. Fetch orders from API
-      const ordersRes = await fetch("/api/admin/orders");
-      if (ordersRes.ok) {
-        const ordersData = await ordersRes.json();
-        setOrders(ordersData || []);
-      }
+      // 1. Fetch orders from Supabase directly
+      const ordersData = await fetchAdminOrders();
+      setOrders(ordersData || []);
 
       // 2. Fetch Pushover credentials from settings (row ID: 0)
       if (supabase) {
@@ -383,15 +366,8 @@ export default function AdminPage() {
     });
 
     try {
-      const res = await fetch("/api/admin/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updated),
-      });
-
-      if (res.ok) {
+      const ok = await saveAdminOrders(updated);
+      if (ok) {
         setOrders(updated);
         showToast("تم تحديث حالة الطلب بنجاح!", "success");
       } else {
@@ -408,15 +384,8 @@ export default function AdminPage() {
     const updated = orders.filter((o: any) => o.id !== orderId);
 
     try {
-      const res = await fetch("/api/admin/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updated),
-      });
-
-      if (res.ok) {
+      const ok = await saveAdminOrders(updated);
+      if (ok) {
         setOrders(updated);
         showToast("تم حذف الطلب بنجاح!", "success");
       } else {
@@ -454,16 +423,8 @@ export default function AdminPage() {
         web3formsKey: web3formsKey.trim()
       };
 
-      // Call API to save settings
-      const res = await fetch("/api/admin/category-settings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedSettings),
-      });
-
-      if (res.ok) {
+      const ok = await saveCategorySettingsService(updatedSettings.categories || {}, updatedSettings.brands || {}, updatedSettings.models || {});
+      if (ok) {
         showToast("تم حفظ جميع إعدادات الاتصال والإشعارات بنجاح!", "success");
       } else {
         throw new Error("Failed to save settings");
@@ -594,11 +555,6 @@ export default function AdminPage() {
     if (deleteProductsToo && matchingProducts.length > 0) {
       const remainingProducts = products.filter(p => p.brand?.toLowerCase() !== brandLower);
       importProducts(remainingProducts);
-      fetch("/api/admin/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(remainingProducts),
-      }).catch(err => console.error("Failed to sync remaining products after brand deletion:", err));
       showToast(`تم حذف الماركة "${brandName}" وجميع المنتجات الـ (${matchingProducts.length}) التابعة لها بنجاح.`, "success");
     } else {
       showToast(`تم حذف الماركة "${brandName}" بنجاح.`, "success");
@@ -635,11 +591,6 @@ export default function AdminPage() {
     if (deleteProductsToo && matchingProducts.length > 0) {
       const remainingProducts = products.filter(p => !(p.model?.toLowerCase() === modelLower && p.year?.toLowerCase() === yearLower));
       importProducts(remainingProducts);
-      fetch("/api/admin/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(remainingProducts),
-      }).catch(err => console.error("Failed to sync remaining products after model deletion:", err));
       showToast(`تم حذف الموديل "${label}" وجميع المنتجات الـ (${matchingProducts.length}) التابعة له بنجاح.`, "success");
     } else {
       showToast(`تم حذف الموديل "${label}" بنجاح.`, "success");
@@ -1347,12 +1298,6 @@ export default function AdminPage() {
 
     const updatedProducts = products.map(p => p.id === updatedProd.id ? updatedProd : p);
     importProducts(updatedProducts);
-    
-    fetch("/api/admin/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedProducts),
-    }).catch(err => console.error("Failed to sync edited database on disk:", err));
 
     showToast("تم تحديث المنتج بنجاح وحفظ التغييرات!", "success");
     setEditingProduct(null);
@@ -1362,12 +1307,6 @@ export default function AdminPage() {
     if (confirm("هل أنت متأكد من رغبتك في حذف هذا المنتج نهائياً؟")) {
       const updatedProducts = products.filter(p => p.id !== productId);
       importProducts(updatedProducts);
-      
-      fetch("/api/admin/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedProducts),
-      }).catch(err => console.error("Failed to sync deleted database on disk:", err));
 
       showToast("تم حذف المنتج بنجاح.", "success");
     }
@@ -1400,12 +1339,6 @@ export default function AdminPage() {
 
     const updatedProducts = [productToAdd, ...products];
     importProducts(updatedProducts);
-
-    fetch("/api/admin/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedProducts),
-    }).catch(err => console.error("Failed to sync created database on disk:", err));
 
     showToast("تم إضافة المنتج الجديد بنجاح!", "success");
     setIsAddingProduct(false);
@@ -1443,12 +1376,6 @@ export default function AdminPage() {
     });
     importProducts(updatedProducts);
 
-    fetch("/api/admin/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedProducts),
-    }).catch(err => console.error("Failed to sync new arrival flag on disk:", err));
-
     showToast(checked ? "تم إضافة المنتج لآخر العروض" : "تم إزالة المنتج من آخر العروض", "success");
   };
 
@@ -1457,12 +1384,6 @@ export default function AdminPage() {
     if (confirm(`هل أنت متأكد من رغبتك في تصفير وإلغاء جميع المنتجات من تصنيف "${label}"؟`)) {
       const updatedProducts = products.map(p => ({ ...p, [field]: false }));
       importProducts(updatedProducts);
-
-      fetch("/api/admin/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedProducts),
-      }).catch(err => console.error(`Failed to reset ${field} on disk:`, err));
 
       showToast(`تم تصفير وإلغاء تصنيف "${label}" بالكامل بنجاح.`, "success");
     }

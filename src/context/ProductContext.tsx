@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { productsData, Product } from "../data/products";
 import importedProductsStatic from "../data/imported_products.json";
 import { supabase } from "../lib/supabaseClient";
+import { saveProductsImport, saveCategorySettings as saveCategorySettingsService } from "../lib/adminService";
 
 interface ProductContextType {
   products: Product[];
@@ -191,42 +192,10 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
                   localStorage.setItem("aljarhee_model_settings", JSON.stringify(mdls));
                 } catch (e) {}
               }
-              return; // Successfully fetched from Supabase, skip API route!
+              return; // Successfully fetched from Supabase!
             }
           } catch (dbErr) {
-            console.warn("Direct Supabase query failed, falling back to API route:", dbErr);
-          }
-        }
-
-        // Fallback to Serverless Function API route if supabase is unavailable or query fails
-        const url = isAdmin ? `/api/products?t=${Date.now()}` : "/api/products";
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            const realProducts = data.filter((p: any) => p.id > 0);
-            const settingsProduct = data.find((p: any) => p.id === 0);
-            
-            setProducts(normalizeDiscountExpiry(realProducts));
-            localStorage.setItem("aljarhee_imported_products", JSON.stringify(data));
-            sessionStorage.setItem("aljarhee_last_sync_ts", Date.now().toString());
-
-            if (settingsProduct && settingsProduct.description) {
-              try {
-                const parsed = JSON.parse(settingsProduct.description);
-                const cats = parsed.categories || {};
-                const brs = parsed.brands || {};
-                const mdls = parsed.models || {};
-                
-                setCategorySettings(cats);
-                setBrandSettings(brs);
-                setModelSettings(mdls);
-
-                localStorage.setItem("aljarhee_category_settings", JSON.stringify(cats));
-                localStorage.setItem("aljarhee_brand_settings", JSON.stringify(brs));
-                localStorage.setItem("aljarhee_model_settings", JSON.stringify(mdls));
-              } catch (e) {}
-            }
+            console.warn("Direct Supabase query failed:", dbErr);
           }
         }
       } catch (err) {
@@ -242,14 +211,8 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     const realProducts = newProducts.filter((p) => p.id > 0);
     setProducts(realProducts);
 
-    // Call server API to persist (will write to Supabase or fallback to local disk)
-    fetch("/api/admin/import", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(newProducts),
-    }).catch((err) => console.warn("Failed to persist products to API:", err));
+    // Persist directly to Supabase
+    saveProductsImport(newProducts).catch((err) => console.warn("Failed to persist products to Supabase:", err));
   };
 
   const resetProducts = () => {
@@ -262,14 +225,8 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     setBrandSettings({});
     setModelSettings({});
 
-    // Clear server API data
-    fetch("/api/admin/import", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify([]),
-    }).catch((err) => console.warn("Failed to reset products via API:", err));
+    // Clear server data
+    saveProductsImport(productsData).catch((err) => console.warn("Failed to reset products:", err));
   };
 
   const saveCategorySettings = async (settings: { categories?: Record<string, string>; brands?: Record<string, string>; models?: Record<string, string> }) => {
@@ -291,19 +248,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
       models: mdls
     };
 
-    try {
-      const res = await fetch("/api/admin/category-settings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-      return res.ok;
-    } catch (err) {
-      console.warn("Failed to persist category settings via API:", err);
-      return false;
-    }
+    return await saveCategorySettingsService(cats, brs, mdls);
   };
 
   return (

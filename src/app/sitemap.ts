@@ -2,6 +2,8 @@ import { MetadataRoute } from "next";
 import { getProductsList } from "../lib/productsApi";
 import { SITE_URL, createSlug } from "../lib/config";
 
+export const dynamic = "force-static";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = SITE_URL;
 

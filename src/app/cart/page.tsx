@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useToast } from "../../context/ToastContext";
+import { submitCheckoutOrder } from "../../lib/checkoutService";
 import { 
   Trash2, 
   Plus, 
@@ -109,29 +110,16 @@ export default function CartPage() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          customerName: customerName.trim(),
-          customerPhone: customerPhone.trim(),
-          customerCity,
-          customerAddress: customerAddress.trim(),
-          cartItems,
-          subtotal,
-          shippingFee,
-          total,
-        }),
+      const result = await submitCheckoutOrder({
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        customerCity,
+        customerAddress: customerAddress.trim(),
+        cartItems,
+        subtotal,
+        shippingFee,
+        total,
       });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Failed to submit order");
-      }
-
-      const result = await res.json();
 
       // Clear local cart
       localStorage.setItem("aljarhee_cart", JSON.stringify([]));
